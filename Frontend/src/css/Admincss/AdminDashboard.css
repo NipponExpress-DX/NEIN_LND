@@ -1,0 +1,374 @@
+.admin-dashboard {
+    display: flex;
+    height: 100vh;
+    width: 100%; 
+  
+}
+
+.sidebar {
+    background: white;
+    color: #1A005D;
+    /* padding: 5px; */
+    position: fixed;
+    height: 100%;
+    transition: all 0.3s ease; 
+    overflow: hidden;
+    /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); */
+    z-index: 100;
+}
+
+.sidebar.collapsed {
+    width: 50px; 
+}
+
+.sidebar a.selected {
+    background-color: #1A005D; 
+    font-weight: bold;
+    color: #8EC400; 
+    border-radius: 4px;
+}
+
+.sidebar h2 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    padding: 0 10px;
+}
+
+.sidebar ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar li {
+    margin: 5px 0;
+}
+
+.sidebar a {
+    color: black;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    white-space: nowrap;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.sidebar a:hover {
+    background-color: #8EC400;
+    color: #1A005D; 
+}
+
+.sidebar .icon {
+    margin-right: 10px; /* Reduced space */
+    font-size: 1.2rem; /* Smaller icons */
+    min-width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar.collapsed .icon {
+    margin-right: 0;
+}
+
+.sidebar.collapsed h2 {
+    display: none; 
+}
+
+/* Tooltip styles */
+.icon-container {
+    position: relative;
+}
+
+.tooltip {
+    position: absolute;
+    left: 45px;
+    top: -5px;
+    background-color: #1A005D;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.icon-container:hover .tooltip {
+    opacity: 1;
+}
+
+.submenu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.submenu-header:hover {
+    background-color: #8EC400;
+    color: #1A005D;
+}
+
+.submenu-header .icon {
+    margin-right: 10px;
+}
+
+.submenu-header span {
+    flex-grow: 1;
+    font-weight: 500;
+    color: #1A005D;
+    font-size: 14px;
+}
+
+.submenu-arrow {
+    margin-left: auto;
+    font-size: 14px;
+}
+
+.submenu {
+    list-style: none;
+    padding-left: 15px;
+    margin: 0;
+    background-color: rgba(26, 0, 93, 0.05);
+    border-radius: 4px;
+}
+
+.submenu-item {
+    margin: 2px 0;
+}
+
+.submenu-link {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    color: #1A005D;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.submenu-link:hover {
+    background-color: rgba(142, 196, 0, 0.3);
+}
+
+.submenu-link.selected {
+    background-color: rgba(26, 0, 93, 0.1);
+    font-weight: bold;
+}
+
+.main-content {
+    flex-grow: 1;
+    margin-left: 180px; /* Match sidebar width */
+    background-color: #f8f9fa;
+    padding: 20px;
+    height: 100vh;    
+    transition: margin-left 0.3s ease, width 0.3s ease; 
+    width: calc(100% - 180px); /* Match sidebar width */
+    overflow-x: auto;
+}
+
+.main-content.sidebar-collapsed {
+    margin-left: -179px;
+    width: calc(100% - 50px); /* Match collapsed sidebar width */
+}
+
+
+.sidebar.collapsed ~ .toggle-btn {
+    left: 60px;
+}
+
+/* For Nippon Express specific styles */
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+   
+}
+
+.nav-item {
+    position: relative;
+}
+
+.brand-logo {
+    padding: 8px 10px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-logo img {
+    max-height: 30px;
+}/* Add these styles to your AdminDashboard.css file */
+
+.reports-section {
+  position: relative;
+}
+
+.floating-submenu {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  min-width: 180px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: 8px 0;
+  margin-left: 5px;
+}
+
+.floating-submenu-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  text-decoration: none;
+  color: #333;
+  transition: background-color 0.3s;
+}
+
+.floating-submenu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.floating-submenu-item.selected {
+  background-color: rgba(128, 0, 128, 0.1); /* Purple tint for selected item */
+  color: purple;
+}
+
+.floating-submenu-item .icon {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+/* Make the Reports icon interactive when collapsed */
+.sidebar.collapsed .reports-section .submenu-header {
+  cursor: pointer;
+}
+/* Add these styles to your AdminDashboard.css file */
+
+.reports-section {
+    position: relative;
+  }
+  
+  /* Style for submenu when sidebar is collapsed */
+  .sidebar.collapsed .collapsed-submenu {   
+    background-color: #fff;   
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); 
+  }
+  
+  .sidebar.collapsed .submenu-item {   
+    display: block;
+  }
+  
+  .sidebar.collapsed .submenu-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 4px;
+  }
+  
+  .sidebar.collapsed .submenu-link:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .sidebar.collapsed .submenu-link.selected {
+    background-color: rgba(128, 0, 128, 0.1); /* Purple tint for selected item */
+    color: purple;
+  }
+  /* Video Tutorial Button - Bottom Left */
+.video-tutorial-button {
+    position: fixed;
+    bottom: 20px;
+    left: 1px;
+    background-color: #8EC400; 
+    color: white;
+    border-radius: 50px;
+    padding: 12px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+/* Adjust position when sidebar is collapsed */
+.video-tutorial-button.collapsed {
+    left: 20px; /* Same position even when sidebar collapses */
+}
+
+.video-tutorial-button:hover {
+    background-color: #1A005D;
+    transform: translateY(-2px);
+}
+
+.video-tutorial-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Modal styles (remain the same) */
+/* Video Modal Styles */
+.video-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80vw; /* 80% of viewport width */
+    max-width: 900px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    outline: none;
+    padding: 20px;
+}
+
+.video-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+}
+
+.video-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1001;
+}

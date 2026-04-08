@@ -1,0 +1,159 @@
+/* Main Content */
+.main-content {
+  background-color: #ffffff;
+  padding: 4px; /* Increased padding for better spacing */
+  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.1); /* Slightly deeper shadow for better depth */
+  border-radius: 8px; /* Smooth edges for a modern feel */
+}
+.Masters {
+  background-color: #ffffff;
+
+}
+/* Header */
+.Masters-header {
+  font-size: 2rem; /* Slightly larger font for emphasis */
+  font-weight: 600; /* Bolder text for visibility */
+  color: #ffffff;
+  background: linear-gradient(1deg, #4a90e2, #4a90e2); /* Vibrant gradient background */
+  padding: 1px; /* Better padding for consistent spacing */
+  border-radius: 8px; /* Slightly rounded edges */
+  text-align: center;
+  text-transform: uppercase;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1); /* Slightly deeper shadow */
+  margin-bottom: 1px; /* Added spacing below header */
+  letter-spacing: 1.1px; /* Balanced spacing between letters */
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  
+}
+
+/* Section Header */
+.section-header {
+  font-size: 1.2rem; /* Adjusted for responsiveness */
+
+  font-weight: 100;
+  color: #ffffff;
+  margin: 2px 0px 10px 0px; /* Consistent spacing */
+  padding: 3px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  background: linear-gradient(90deg, #91c2fb, #91c2fb); /* Subtle gradient */
+  border-radius: 8px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Light shadow */
+  position: relative;
+  
+}
+
+/* Menu Cards Wrapper */
+.stack-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px; /* Reduced gap for better compactness */
+  justify-content: center;
+  align-items: center;
+  margin-top: 100px;
+  
+}
+
+.menu-box {
+  display: inline-block;
+  width: 100px; /* Increased size for better usability */
+  height: 100px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1); /* Soft shadow */
+  border-radius: 10px;
+  margin: 10px;
+  padding: 10px;
+  background: #f8f9fc; /* Light background for better visibility */
+  
+}
+
+.menu-box:hover {
+  transform: scale(1.08); /* Smooth scaling */
+  box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2); /* Stronger hover shadow */
+}
+
+/* Card Styling */
+.menu-card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100%;
+  background-color: #e6e9f0;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  transition: background-color 0.3s ease;
+}
+
+.menu-card:hover {
+  background-color: #d1e4f7; /* Subtle color change on hover */
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-content svg {
+  color: #4a90e2;
+  font-size: 2.5rem; /* Adjusted for a balanced look */
+  margin-bottom: 8px;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.card-content .MuiTypography-body2 {
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600; /* Slightly bolder for readability */
+}
+
+/* Hover Effects */
+.menu-card:hover .card-content svg {
+  color: #2a5fa1;
+  transform: scale(1.15); /* Slight scaling for interactivity */
+}
+
+.menu-card:hover .card-content .MuiTypography-body2 {
+  color: #2a5fa1;
+}
+
+.menu-box:hover .card-content svg {
+  transform: scale(1.2);
+}
+
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .Masters-header {
+    font-size: 1rem;
+    padding: 8px;
+  }
+
+  .section-header {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+  }
+
+  .menu-box {
+    width: 100px;
+    height: 100px;
+  }
+
+  .card-content svg {
+    font-size: 2rem;
+  }
+
+  .card-content .MuiTypography-body2 {
+    font-size: 0.9rem;
+  }
+
+  .stack-container {
+    gap: 15px;
+  }
+}

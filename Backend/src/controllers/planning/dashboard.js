@@ -1,0 +1,1 @@
+const { hrmdb, leavemanagement } = require('../../../configuration/db');

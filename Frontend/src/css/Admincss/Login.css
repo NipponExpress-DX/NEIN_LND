@@ -1,0 +1,133 @@
+/* src/css/Login.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* body {
+    font-family: 'Poppins', sans-serif; 
+    background: linear-gradient(300deg, #2bd800 0%, #1A005D 100%); 
+    margin: 0;
+    height: 100vh; 
+} */
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: rgb(235, 233, 229);
+}
+
+.login-form {
+  background: white;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 450px;
+}
+
+.login-form h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 500;
+  color: #1A005D;
+}
+
+.login-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #1A005D;
+  font-size: 14px;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  border: 1px solid #1A005D;
+  font-size: 14px;
+  color: #1A005D;
+  transition: border-color 0.2s ease;
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: #2bd800;
+  box-shadow: 0 0 5px rgba(118, 75, 162, 0.3);
+}
+
+.login-form button {
+  width: 100%;
+  padding: 12px 15px;
+  background-color: #2bd800;
+  color: rgb(255, 255, 255);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-form button:hover {
+  background-color: #1A005D;
+}
+
+.login-form input::placeholder {
+  color: #aaa;
+}
+
+.login-form p {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #888;
+}
+
+.login-form p a {
+  color: #5b13a3;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-form p a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .login-form {
+    max-width: 90%;
+  }
+}
+.spinner {
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+.path {
+  stroke: #fff;
+  stroke-linecap: round;
+  animation: dash 1.5s ease-in-out infinite;
+}
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes dash {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -125;
+  }
+}

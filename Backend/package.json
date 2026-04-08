@@ -1,0 +1,31 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@azure/identity": "^4.10.2",
+    "@azure/msal-node": "^3.6.3",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^4.21.2",
+    "isomorphic-fetch": "^3.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "mssql": "^11.0.1",
+    "multer": "^1.4.5-lts.1",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.14.0",
+    "node-cron": "^3.0.3",
+    "node-schedule": "^2.1.1",
+    "nodemailer": "^6.9.16"
+  }
+}

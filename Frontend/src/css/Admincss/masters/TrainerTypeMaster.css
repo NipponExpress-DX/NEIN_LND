@@ -1,0 +1,185 @@
+/* Main Content */
+.main-content {
+  background-color: #fff;
+} 
+ 
+/* Header Section */
+.master-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+ 
+.header-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0c0c0c;
+}
+ 
+/* Search and Add Button Section */
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Adds gap between elements */
+}
+ 
+.back-button {
+  padding: 8px;
+  background-color: #f1f1f1;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+ 
+.back-button:hover {
+  background-color: #e0e0e0;
+}
+ 
+.search-input {
+  width: 250px;
+  margin: 0; /* Ensures proper alignment with back button */
+}
+ 
+.Adding-button {
+  font-size: 3rem; /* Adjusted size for a clean look */
+  margin: 0px 0px 0px 10px;
+  padding: 8px;
+  background-color: #f1f1f1;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+ 
+.Adding-button:hover {
+  background-color: #e0e0e0;
+}
+ 
+/* Table Section */
+.trainer-type {
+  margin-top: 20px;
+  overflow-x: auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+ 
+/* Table Container */
+/* .MuiTableContainer-root {
+  max-height: 440px;
+  background-color: #030303;
+  border-radius: 8px;
+} */
+ 
+/* Table Header */
+.table-header-row {
+  background-color: #1a005d; /* Bright blue header */
+  color: #ffffff;
+}
+ 
+.table-header-cell {
+  font-size: 1.0rem;
+  font-weight: bold;
+  text-align: unset;
+  padding: 10px 0px;
+  color: #ffffff !important;
+}
+ 
+/* Table Body */
+.table-body-cell {
+  font-size: 1rem;
+  color: #333333;
+  padding: 10px;
+}
+ 
+/* Hover Effect for Rows */
+/* .MuiTableRow-root:hover {
+  background-color: #f5faff;
+  cursor: pointer;
+} */
+ 
+/* Action Icons */
+ 
+ 
+/* General Icon Button Styles */
+.icon-button {
+  padding: 12px;
+  margin: 5px;
+  border-radius: 50%; /* Circular buttons */
+  background-color: #f9f9f9; /* Neutral light background */
+  color: #333333; /* Default icon color */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  transition: all 0.3s ease; /* Smooth hover effect */
+}
+ 
+.icon-button:hover {
+  background-color: #e0e0e0; /* Slightly darker background on hover */
+  transform: scale(1.1); /* Slight hover zoom effect */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
+}
+ 
+.icon-button:active {
+  transform: scale(1); /* Reset scale on click */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* Subtle shadow for click effect */
+}
+ 
+/* View Button Specific Style */
+.view-button {
+  font-size: 1.5rem; /* Adjusted size for better visibility */
+  color: #4caf50; /* Green for view action */
+}
+ 
+.view-button:hover {
+  color: #388e3c; /* Darker green on hover */
+}
+ 
+/* Edit Button Specific Style */
+.edit-button {
+  font-size: 1.5rem; /* Icon size */
+  color: #ff9800; /* Orange for edit action */
+}
+ 
+.edit-button:hover {
+  color: #f57c00; /* Darker orange on hover */
+}
+ 
+/* Delete Button Specific Style */
+.delete-button {
+  font-size: 1.7rem; /* Slightly larger for delete action */
+  color: #f44336; /* Red for delete action */
+}
+ 
+.delete-button:hover {
+  color: #d32f2f; /* Darker red on hover */
+  background-color: #fdecea; /* Subtle red background on hover */
+}
+/* Make sure the table text is visible */
+ 
+ 
+/* Responsive Design */
+@media (max-width: 768px) {
+  .search-container {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px; /* Ensures consistent spacing on smaller screens */
+  }
+ 
+  .search-input {
+      margin-bottom: 10px;
+      width: 100%;
+  }
+ 
+  .Adding-button {
+      margin-left: 0;
+  }
+ 
+  .table-header-cell {
+      font-size: 1rem;
+  }
+}
+ 

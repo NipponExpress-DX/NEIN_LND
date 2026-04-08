@@ -1,0 +1,57 @@
+.user-dashboard {
+    display: flex;
+    height: 100vh; /* Full viewport height */
+}
+
+.sidebar {
+    width: 250px;
+    background: linear-gradient(300deg, #0f03be 0%, #04c214 100%);
+    color: white;
+    padding: 20px;
+    position: fixed;
+    height: 100%; /* Full height of the viewport */
+}
+
+.sidebar h2 {
+    margin: 0 0 20px;
+}
+
+.sidebar ul {
+    list-style-type: none; 
+    padding: 0; 
+}
+
+.sidebar li {
+    margin: 15px 0; 
+}
+
+.sidebar a {
+    color: white; 
+    text-decoration: none; 
+    display: block; 
+}
+
+.sidebar a:hover {
+    background-color: #1A005D; 
+    padding: 10px;
+}
+
+.card {
+    padding: 20px;
+    margin: 15px 0;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.card:hover {
+    transform: scale(1.05);
+}.main-content {
+    flex: 1;
+    margin-left: 250px; /* Same as sidebar width */
+    padding: 20px;
+    background-color: #f8f9fa;
+    overflow-y: auto;
+}

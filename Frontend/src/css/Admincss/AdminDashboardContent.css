@@ -1,0 +1,302 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+
+.admin-dashboard-content {
+  display: flex;
+  flex-direction: column;
+  /* background-color: #f5f5f5; */
+  min-height: 100vh;
+  width: calc(100% - 240px);
+  margin-left: 220px;
+  gap: 0;
+}
+
+.main-content {
+  transition: margin-left 0.3s ease, width 0.3s ease; 
+
+  width: 100%;
+  height: 100vh; 
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  background-color: white;
+  border-radius: 1px;
+  padding: 5px;
+  margin: 0;
+  overflow: visible !important;
+}
+
+.table-row {
+  /* background: linear-gradient(135deg, #7eb7f0, #0df165); */
+  background: #1A005D;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 1px;
+  font-family: "Open Sans", sans-serif !important;
+  font-weight: 400 !important;
+}
+.table-row, .table-row * {
+  color: white !important;
+}
+.table-row th {
+  font-size: 16px; 
+  padding: 9px 10px; 
+  
+}
+
+.table-rowcontent { 
+  background-color: white;
+  padding: 5px;
+
+}
+
+.table-rowcontent td {
+  max-width: 200px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  padding: 6px;
+}
+.table-container {
+  width: 100%;
+}
+
+.table-rowcontent > td {
+  padding: 4px; 
+  font-family: "Roboto", "Helvetica", "Arial", "sans-serif"!important;
+  font-size: 15px;
+  
+}
+/* Status Classes */
+.table-rowcontent .completed { 
+  color: #388e3c; 
+  font-weight: bold; 
+}
+.table-rowcontent {
+  min-height: 40px; /* Adjust this value as needed */
+}
+.count-container {
+  display: flex; 
+  flex-wrap: wrap;
+  gap: 8px; /* Space between cards */
+  justify-content: space-between; 
+  margin: 8px 0; /* Add vertical spacing */
+}
+.count-container-user {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px; /* Space between cards */
+  margin: 8px 0;
+  justify-content: flex-start; /* Ensures even spacing */
+}
+
+
+.count-card {
+  min-width: 100px; 
+  padding: 8px; 
+  text-align: center; 
+  border-radius: 8px;
+  cursor: pointer; 
+  transition: transform 0.3s, box-shadow 0.3s; 
+}
+
+.count-card i {
+  font-size: 14px; /* Icon size */
+  margin-bottom: 4px; /* Add spacing between icon and text */
+}
+
+.count-card:hover {
+  transform: translateY(-4px); 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); 
+}
+
+.count-card.total {
+  /* background-color: #f5f5f5; Neutral light background */
+  color: #000000; 
+  border: 1px solid #ccc;
+}
+
+.count-card.completed { 
+  /* background-color: #e8f5e9; Light green background */
+  color: #388e3c; 
+  border: 1px solid #388e3c; 
+}
+
+.count-card.pending {
+  /* background-color: #fff8e1; Light yellow background */
+  color: #ff9800;
+  border: 1px solid #ff9800; 
+}
+
+.count-card.cancelled {
+  /* background-color: #ffebee; Light red background */
+  color: #d32f2f; 
+  border: 1px solid #d32f2f; 
+}
+
+.count-card.training-completed {
+  /* background-color: #ede7f6; Light purple background */
+  color: #673ab7;
+  border: 1px solid #673ab7;
+}
+
+.count-card.feedback-submitted {
+  /* background-color: #fde3f9; Light purple background */
+  color: #8EC400;
+  border: 1px solid #8EC400; 
+}
+.count-card.feedback-received {
+  /* background-color: #e3f2fd; Light blue background */
+  color: #0288d1; 
+  border: 1px solid #0288d1; 
+}
+
+.filter-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 10px;
+  background: linear-gradient(135deg, #7eb7f0, #0df165);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 10px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.filter-button:hover {
+  background: linear-gradient(135deg, #0df165, #7eb7f0);
+  transform: scale(1.05); 
+}
+.filter-section {
+  display: flex; 
+  justify-content: flex-start; /* Align items to the start */
+  margin-bottom: 20px; 
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+  gap: 10px; /* Adjust gap as needed */
+}
+
+.formcontrol-filter { 
+  margin-right: 10px; 
+} 
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center; 
+  padding-right: 16px;
+  margin-top: 10px;
+  
+}
+
+.pagination-wrapper p {
+  margin-top: 0 !important;  
+  margin-bottom: 0 !important; 
+}
+.add-button {
+  background: #1A005D !important; /* Set the background to #1A005D */
+  color: white !important; /* Ensure the icon color is white */
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  font-size: 28px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+
+.add-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.add-button:active {
+  transform: scale(0.95);
+}
+.menu-item {
+  font-size: 1rem;
+  padding: 10px 20px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+  color: #333; 
+}
+
+.menu-item:hover {
+  background-color: #f0f0f0; 
+  color: #7eb7f0;
+}
+
+.admin-dashboard-content .date-picker-input {
+  width: 180px !important;
+  height: 45px !important;
+  padding: 0 14px !important;
+}
+
+.dialog-container {
+  padding: 50px;
+ 
+}
+
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+}
+.form-control-wrapper{
+  padding-top: 4px;
+}
+.blinking {
+  animation: blink-animation 1s steps(5, start) infinite;
+}
+
+@keyframes blink-animation {
+  to {
+    visibility: hidden;
+  }
+}.milestone {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.milestone.completed {
+  background-color: green;
+}
+
+.milestone.in-progress {
+  background-color: yellow;
+}
+
+.milestone.not-started {
+  background-color: gray;
+}
+.topic-field .MuiInputLabel-root {
+  color: #1A005D !important; /* Filled color */
+}
+
+.topic-field .MuiInputLabel-root.Mui-focused {
+  color: #8EC400 !important; /* Focused color */
+}
+
+.custom-textfield .MuiInputLabel-root {
+  color: #1A005D !important; /* Default color */
+}
+
+.custom-textfield .MuiInputLabel-root.Mui-focused {
+  color: #8EC400 !important; /* Green when focused */
+}
+
+
+
+
