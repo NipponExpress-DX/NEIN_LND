@@ -755,7 +755,9 @@ function Agenda() {
       console.error("fetchDraftList error:", e);
     }
   };
-
+  useEffect(() => {
+    if (selectedSessionNo) fetchDraftList();
+  }, [selectedSessionNo]); // eslint-disable-line
   // ─── Session CRUD ─────────────────────────────────────────────────────────────
   const resetSessionForm = () => {
     setSessions({
@@ -902,8 +904,8 @@ function Agenda() {
 
   const handleSaveData = async () => {
     if (!validateFields() || !selectedBranches.length) return;
-    const isDuplicate = savedData.some((e) => e.coordinator_emp_id === coordinatorCode);
-    if (isDuplicate) { handleOpenSnackbar("This coordinator is already added.", "warning"); return; }
+    // const isDuplicate = savedData.some((e) => e.coordinator_emp_id === coordinatorCode);
+    // if (isDuplicate) { handleOpenSnackbar("This coordinator is already added.", "warning"); return; }
     const firstBranch = selectedBranches[0].trim();
     const countForBranch = traineeCount[firstBranch] || 0;
     // FIX: selectedSession holds the session_no VALUE (e.g. 1, 2),
@@ -2217,7 +2219,11 @@ useEffect(() => {
                     onInputChange={(_, v) => { if (!isSubmitted) { setCoordinatorInputValue(v); if (!v) setSessions((prev) => ({ ...prev, coordinatorCode: "", coordinatorEmail: "", coordinatorName: "" })); } }}
                     onChange={(_, v) => {
                       if (!isSubmitted) {
-                        if (v) { setCoordinatorCode(v.emp_id); setCoordinatorName(v.full_name); setCoordinatorEmail(v.email); }
+                        if (v) {
+                          setCoordinatorCode(v.emp_id);
+                          setCoordinatorName(v.full_name);
+                          setCoordinatorEmail(v.email);
+                        }
                         else { setCoordinatorCode(""); setCoordinatorName(""); setCoordinatorEmail(""); }
                       }
                     }}
@@ -2473,9 +2479,8 @@ useEffect(() => {
                           if (v) {
                             setSelectedSession(v);
                             setSelectedSessionNo(v.session_no);
-                          
-                            // Load all trainees for this session immediately
                             fetchTrainees();
+                                setDraftRefreshKey(k => k + 1);
                           } else {
                             setSelectedSession(null);
                             setSelectedSessionNo(null);
@@ -2510,7 +2515,6 @@ useEffect(() => {
                         <Autocomplete options={availableBranch} getOptionLabel={(o) => o} value={selectedbranch || null}
                           onChange={(_, v) => {
                             setSelectedbranch(v || "");
-                            // When branch is cleared, also clear dept filter
                             if (!v) setSelecteddepartment("");
                           }}
                           renderInput={(params) => (
@@ -2689,7 +2693,11 @@ useEffect(() => {
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#1A005D", px: 2, py: 0.5 }}>
                           <Tabs value={draftViewTab} onChange={(_, v) => setDraftViewTab(v)}
                             sx={{ "& .MuiTab-root": { color: "#ccc", fontSize: "13px", minHeight: "36px" }, "& .Mui-selected": { color: "#8EC400 !important" }, "& .MuiTabs-indicator": { backgroundColor: "#8EC400" } }}>
-                            <Tab value="drafted" label={`Drafted (${sortedDraftTrainees.length})`} />
+                            <Tab value="drafted" label={`Drafted (${
+                              selectedSessionNo
+                                ? sortedDraftTrainees.filter(t => String(t.session_no) === String(selectedSessionNo)).length
+                                : sortedDraftTrainees.length
+                            })`} />
                             <Tab value="not_drafted" label={`Not Yet Drafted (${notDraftedTrainees.length})`} />
                           </Tabs>
                           <Tooltip title="Refresh draft list" arrow>
@@ -2725,11 +2733,19 @@ useEffect(() => {
                                     </TableRow>
                                   </TableHead>
                                   <TableBody>
-                                    {branchNames
-                                      .filter((_, i) => branchNames.length <= 1 || i === selectedTab)
-                                      .flatMap((b) => traineesByBranch[b] || [])
-                                      .filter((t) => !searchQuery || t.full_name?.toLowerCase().includes(searchQuery) || String(t.emp_id).includes(searchQuery))
-                                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                    {sortedDraftTrainees
+                                          .filter((t) => !selectedSessionNo || String(t.session_no) === String(selectedSessionNo))
+                                          .filter((t) => {
+                                            if (searchQuery) return true; // global search — ignore branch tab
+                                            if (branchNames.length <= 1) return true;
+                                            return t.branch_name === branchNames[selectedTab]; // no search — respect tab
+                                          })
+                                          .filter((t) =>
+                                            !searchQuery ||
+                                            t.full_name?.toLowerCase().includes(searchQuery) ||
+                                            String(t.emp_id).includes(searchQuery)
+                                          )
+                                          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                       .map((trainee, idx) => {
                                         const canDelete = mappedCoordinators?.some((c) => trainee.session_no === c.session_no || (c.session_no1 && trainee.session_no === c.session_no1));
                                         return (
