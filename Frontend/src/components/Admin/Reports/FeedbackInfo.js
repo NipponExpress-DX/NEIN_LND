@@ -467,13 +467,13 @@ useEffect(() => {
     setPage(0);
   };
 
-  const handleSessionClick = async (session) => {
-    console.log("Selected session object:", session);
-    setSelectedSession(session);
-    await fetchFeedbackDetails(session.planing_id, session.session_no);
-    await fetchEffectivenessData(session.planing_id, session.session_no);
-    setOpenDialog(true);
-  };
+ const handleSessionClick = async (session) => {
+  console.log("Selected session:", session.planing_id, session.session_no); // verify these exist
+  setSelectedSession(session);
+  await fetchFeedbackDetails(session.planing_id, session.session_no);
+  await fetchEffectivenessData(session.planing_id, session.session_no);
+  setOpenDialog(true);
+};
 
   const handleCloseDialog = () => {
     setOpenDialog(false);

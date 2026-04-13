@@ -97,6 +97,7 @@ function WalkInFormModal({ open, onClose, onSave, editingWalkIn }) {
     else if (!/\S+@\S+\.\S+/.test(formData.trainee_mail)) e.trainee_mail = 'Email is invalid';
     if (!formData.trainee_branch.trim())     e.trainee_branch     = 'Branch is required';
     if (!formData.trainee_department.trim()) e.trainee_department = 'Department is required';
+    if (!formData.emp_id || !String(formData.emp_id).trim()) e.emp_id = 'Employee ID is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -137,10 +138,14 @@ function WalkInFormModal({ open, onClose, onSave, editingWalkIn }) {
             </Grid>
           ))}
           <Grid item xs={12}>
-            <TextField fullWidth label="Employee ID (Optional)"
+            <TextField
+              fullWidth
+              label="Employee ID *"
               value={formData.emp_id || ''}
               onChange={e => setFormData(p => ({ ...p, emp_id: e.target.value || null }))}
-              helperText="Optional — provide if the attendee has an employee ID"
+              error={!!errors.emp_id}
+              helperText={errors.emp_id || 'Employee ID is required for walk-in attendance'}
+              required
             />
           </Grid>
         </Grid>
@@ -385,15 +390,15 @@ export default function AttendanceUploadDialog({
   // ── Walk-in CRUD ───────────────────────────────────────────────────────────
   const handleAddWalkIn = useCallback((walkInData) => {
     const newWalkIn = {
-      id:         walkInData.id || `walkin_${Date.now()}_${Math.random()}`,
-      name:       walkInData.trainee_name,
-      email:      walkInData.trainee_mail,
-      branch:     walkInData.trainee_branch,
-      department: walkInData.trainee_department,
-      empId:      walkInData.emp_id || null,
-      isComplete: true,
-      source:     'custom_walkin',
-    };
+    id:         walkInData.id || `walkin_${Date.now()}_${Math.random()}`,
+    name:       walkInData.trainee_name,
+    email:      walkInData.trainee_mail,
+    branch:     walkInData.trainee_branch,
+    department: walkInData.trainee_department,
+    empId:      walkInData.emp_id ? String(walkInData.emp_id).trim() : null,  // ← preserve
+    isComplete: true,
+    source:     'custom_walkin',
+  };
 
     if (editingWalkIn) {
       setCustomWalkIns(prev => prev.map(w => w.id === editingWalkIn.id ? newWalkIn : w));
@@ -543,24 +548,25 @@ export default function AttendanceUploadDialog({
     // ── Initialize ALL mapped trainees as absent first ──
     realMapped.forEach(o => { map[String(o.id)] = 'N'; });   // ✅ String()
 
-    matched.forEach(r => {
-      if (!r.include) return;
+    // In buildMapTab0 — matched.forEach section for custom_walkin/unknown
+      matched.forEach(r => {
+        if (!r.include) return;
 
-      if (r.source === 'custom_walkin' || r.source === 'unknown') {
-        if (r.isComplete) {
-          walkInDetails.push({
-            trainee_name:       (r.traineeName       || r.nameInput || '').trim(),
-            trainee_mail:       (r.email             || '').trim().toLowerCase(),
-            trainee_branch:     (r.traineeBranch     || '').trim(),
-            trainee_department: (r.traineeDepartment || '').trim(),
-            trainee_id:         null,
-            attendance_status:  1,
-          });
+        if (r.source === 'custom_walkin' || r.source === 'unknown') {
+          if (r.isComplete) {
+            walkInDetails.push({
+              trainee_name:       (r.traineeName       || r.nameInput || '').trim(),
+              trainee_mail:       (r.email             || '').trim().toLowerCase(),
+              trainee_branch:     (r.traineeBranch     || '').trim(),
+              trainee_department: (r.traineeDepartment || '').trim(),
+              trainee_id:         r.traineeId ? String(r.traineeId).trim() : null,  // ← r.traineeId now has empId
+              attendance_status:  1,
+            });
+          }
+        } else if (r.traineeId) {
+          map[String(r.traineeId)] = 'Y';
         }
-      } else if (r.traineeId) {
-        map[String(r.traineeId)] = 'Y';   // ✅ String() — handles T-091, EMP-123 etc
-      }
-    });
+      });
 
     customWalkIns.forEach(w => {
       const alreadyAdded = walkInDetails.some(d => d.trainee_mail === w.email.trim().toLowerCase());
@@ -570,7 +576,7 @@ export default function AttendanceUploadDialog({
           trainee_mail:       (w.email      || '').trim().toLowerCase(),
           trainee_branch:     (w.branch     || '').trim(),
           trainee_department: (w.department || '').trim(),
-          trainee_id:         w.empId ? String(w.empId) : null,  // ✅ String()
+          trainee_id:         w.empId ? String(w.empId).trim() : null,  // ← was always null
           attendance_status:  1,
         });
       }
@@ -591,13 +597,13 @@ export default function AttendanceUploadDialog({
     tab1PresentMapped.forEach(o => { map[String(o.id)] = 'Y'; });   // ✅
 
     customWalkIns.forEach(w => {
-      if (!w.isComplete) return;   // ← skip incomplete walk-ins
+      if (!w.isComplete) return;
       walkInDetails.push({
         trainee_name:       (w.name       || '').trim(),
         trainee_mail:       (w.email      || '').trim().toLowerCase(),
         trainee_branch:     (w.branch     || '').trim(),
         trainee_department: (w.department || '').trim(),
-        trainee_id:         w.empId ? String(w.empId) : null,   // ✅
+        trainee_id:         w.empId ? String(w.empId).trim() : null,  // ← was always null
         attendance_status:  1,
       });
     });

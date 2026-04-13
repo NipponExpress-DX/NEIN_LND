@@ -45,7 +45,7 @@ WHERE
     AND pt.calDeleteStatus = 0
     AND ps.calDeleteStatus = 0
     AND ps.PSstatus='Session Closed'
-    AND pt.Status = 'Final Submitted'
+   
     AND tt.calDeleteStatus = 0
     AND sc.calDeleteStatus = 0
     AND ttype.calDeleteStatus = 0
@@ -186,13 +186,12 @@ exports.FeedBackReportsCombined123= (req, res) => {
     });
 };
 
+// In reports controller — FeedBackReportsCombined
 exports.FeedBackReportsCombined = (req, res) => {
 
     let { branch_list, department_list } = req.body;
-    console.log("branch_list",branch_list);
-        console.log("department_list",department_list);
+    console.log("FeedBack Reports DataTable:", req.body);
 
-    // Handle if values come as comma-separated strings
     if (typeof branch_list === 'string') {
         branch_list = branch_list.split(',').map(id => id.trim());
     }
@@ -200,12 +199,10 @@ exports.FeedBackReportsCombined = (req, res) => {
         department_list = department_list.split(',').map(id => id.trim());
     }
 
-    // Validate input
     if (!branch_list || !department_list || branch_list.length === 0 || department_list.length === 0) {
         return res.status(400).json({ error: 'At least one branch and one department are required.' });
     }
 
-    // Convert branch and department lists into SQL conditions
     const branchCondition = branch_list.map(b => `FIND_IN_SET(${b}, pt.branch_id) > 0`).join(" OR ");
     const departmentCondition = department_list.map(d => `FIND_IN_SET(${d}, pt.department_id) > 0`).join(" OR ");
 
@@ -214,30 +211,31 @@ exports.FeedBackReportsCombined = (req, res) => {
             ps.planing_id,
             ps.session_no,
             ps.session_code,
-            tt.department_name AS "Dept",
-            tt.training_topic AS "Training Topic",
-            sc.staff_category AS "Targeted Participants",
-            ttype.training_type AS "Trainer Type",
-            ps.session_description AS "Description",
-            ps.trainer_name AS "Trainer Name",
+            tt.department_name AS Dept,
+            tt.training_topic AS \`Training Topic\`,
+            sc.staff_category AS \`Targeted Participants\`,
+            ttype.training_type AS \`Trainer Type\`,
+            ps.session_description AS Description,
+            ps.trainer_name AS \`Trainer Name\`,
             ps.trainer_type,
-            DATE_FORMAT(ps.session_date, '%d-%m-%Y') AS "Training Date",
+            DATE_FORMAT(ps.session_date, '%d-%m-%Y') AS \`Training Date\`,
             DATE_FORMAT(ps.from_time, '%h:%i %p') AS from_time,
             DATE_FORMAT(ps.to_time, '%h:%i %p') AS to_time,
             CASE 
-                WHEN FIND_IN_SET('ALL', COALESCE(pt.branch_id, '')) > 0 OR COUNT(DISTINCT bm.branch_id) > 10
+                WHEN FIND_IN_SET('ALL', COALESCE(pt.branch_id, '')) > 0 
+                     OR COUNT(DISTINCT bm.branch_id) > 10
                 THEN 'PAN INDIA' 
                 ELSE GROUP_CONCAT(DISTINCT bm.branch_name ORDER BY bm.branch_id SEPARATOR ', ') 
-            END AS "Branch",
-            ps.mode_of_training AS "Mode of Training",
-            COUNT(DISTINCT pstd.trainee_id) AS "Participants",
+            END AS Branch,
+            ps.mode_of_training AS \`Mode of Training\`,
+            COUNT(DISTINCT pstd.trainee_id) AS Participants,
             pt.id AS planing_id,
             ps.id AS session_id,
             pstd.trainee_department,
             pstd.feedback_form_submition_date,
             pstd.feedback_form_Assign_final_submit_date,
-            COUNT(DISTINCT CASE WHEN pstd.feedback_form_submition_date IS NOT NULL THEN pstd.trainee_id END) AS "Trainee Feedbacks",
-            CASE WHEN ps.feedback_form_submition_date IS NOT NULL THEN 'Yes' ELSE 'No' END AS "Trainer Feedback Submitted"
+            COUNT(DISTINCT CASE WHEN pstd.feedback_form_submition_date IS NOT NULL THEN pstd.trainee_id END) AS \`Trainee Feedbacks\`,
+            CASE WHEN ps.feedback_form_submition_date IS NOT NULL THEN 'Yes' ELSE 'No' END AS \`Trainer Feedback Submitted\`
         FROM 
             hrmdb.planning_training_table pt
         LEFT JOIN 
@@ -251,17 +249,18 @@ exports.FeedBackReportsCombined = (req, res) => {
         LEFT JOIN 
             hrmdb.planing_sessions ps ON pt.id = ps.planing_id
         LEFT JOIN 
-            hrmdb.planing_session_trainee_data pstd ON ps.planing_id = pstd.planing_id 
+            hrmdb.planing_session_trainee_data pstd 
+                ON ps.planing_id = pstd.planing_id 
                 AND ps.session_no = pstd.session_no 
                 AND pstd.calDeleteStatus = 0
         WHERE 
-            pt.Status = 'Final Submitted'
-            AND pt.calDeleteStatus = 0
+            pt.calDeleteStatus = 0
             AND ps.calDeleteStatus = 0
             AND ps.PSstatus = 'Session Closed'
             AND tt.calDeleteStatus = 0
             AND sc.calDeleteStatus = 0
             AND ttype.calDeleteStatus = 0
+            AND pt.Status NOT IN ('Cancelled', 'Training Created')
             AND (${branchCondition})
             AND (${departmentCondition})
         GROUP BY 
@@ -269,27 +268,20 @@ exports.FeedBackReportsCombined = (req, res) => {
         ORDER BY 
             ps.session_date, tt.department_name
     `;
-    console.log("")
 
     hrmdb.query(query, (err, results) => {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).json({ error: 'Database error', details: err });
         }
-
-        if (results.length === 0) {
-            return res.status(200).json({ message: 'No records found matching the criteria' });
-        }
-
-        return res.status(200).json(results);
+        return res.status(200).json(results.length > 0 ? results : []);
     });
 };
 
 
 
-
-exports.TrainerFeedbackDetails= (req, res) => {
-    const { planing_id, session_no} = req.body;
+exports.TrainerFeedbackDetails = (req, res) => {
+    const { planing_id, session_no } = req.body;
 
     if (!planing_id || !session_no) {
         return res.status(400).json({ error: 'planing_id and session_no are required' });
@@ -326,7 +318,6 @@ exports.TrainerFeedbackDetails= (req, res) => {
         WHERE 
             pt.id = ?
             AND ps.session_no = ?
-            AND pt.Status = 'Final Submitted'
             AND pt.calDeleteStatus = 0
             AND ps.calDeleteStatus = 0
             AND ps.PSstatus = 'Session Closed'

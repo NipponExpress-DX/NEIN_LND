@@ -1029,7 +1029,33 @@ function AdminDashboardContent() {
             user_email: loggedInUser.user_email,
             Status:     'Training Conducted',
           }
-        );
+        );// ── NEW: send confirmation email to walk-in attendees ──────────────────
+          if (Array.isArray(walkInDetails) && walkInDetails.length > 0) {
+            const walkInEmails = walkInDetails
+              .filter(w => w.trainee_mail)
+              .map(w => w.trainee_mail);
+
+            if (walkInEmails.length > 0) {
+              try {
+                await fetch(
+                  `${API_BASE_URL}/planning-route/PlanningSessionActiveTrainees/sendWalkInAttendanceConfirmation`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      planing_id:    planingId,
+                      session_no:    sessionNo,
+                      walkin_emails: walkInEmails,
+                      walkin_details: walkInDetails,  // full details for email template
+                    }),
+                  }
+                );
+              } catch (emailErr) {
+                console.warn('[handleBulkSave] Walk-in email failed (non-critical):', emailErr);
+                // Don't block the main flow — email is best-effort
+              }
+            }
+          }
       } catch (statusErr) {
         console.error('[handleBulkSave] Status update failed:', statusErr);
         showSnackbar('⚠️ Attendance saved but status update failed.', 'warning');
@@ -1531,37 +1557,87 @@ const handleSendTrainerReminder = useCallback(async (planingId, sessionNo) => {
 
   const handleFinalSubmit = useCallback(() => setOpenConfirmDialog(true), []);
 
-    const handleConfirmSubmit = useCallback(async () => {
-      setLoading(true);
-      setOpenConfirmDialog(false);
-      try {
-        const psRes = await fetch(`${API_BASE_URL}/planning-route/session/updateStatus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planing_id: selectedPlaningId, session_no: selectedSessionId, PSstatus: 'Session Closed' }) });
-        if (!psRes.ok) return;
+  // In handleConfirmSubmit — replace the current implementation
+const handleConfirmSubmit = useCallback(async () => {
+  setLoading(true);
+  setOpenConfirmDialog(false);
+  try {
+    // 1. Close THIS session only
+    const psRes = await fetch(
+      `${API_BASE_URL}/planning-route/session/updateStatus`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planing_id: selectedPlaningId,
+          session_no: selectedSessionId,
+          PSstatus: 'Session Closed',
+        }),
+      }
+    );
+    if (!psRes.ok) {
+      showSnackbar('❌ Failed to close session.', 'error');
+      return;
+    }
 
-        const statusRes = await fetch(`${API_BASE_URL}/planning-route/updateStatus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selectedPlaningId, emp_id: loggedInUser.emp_id, user_name: loggedInUser.empname, user_email: loggedInUser.user_email, Status: 'Final Submitted' }) });
-        if (statusRes.ok) {
-          showSnackbar('✅ Session status updated successfully!');
+    // 2. Refresh sessions for this training
+    const updatedSessions = await fetchSessionsForTraining(selectedPlaningId);
+    setSessionsData(prev => ({ ...prev, [selectedPlaningId]: updatedSessions }));
 
-          // ── FIX: store the refreshed sessions back into sessionsData ──────────
-          const updatedSessions = await fetchSessionsForTraining(selectedPlaningId);
-          setSessionsData(prev => ({ ...prev, [selectedPlaningId]: updatedSessions }));
+    // 3. Only mark whole training as Final Submitted if ALL sessions are closed
+    const allClosed = updatedSessions.every(
+      s =>
+        s.PSstatus === 'Session Closed' ||
+        s.PSstatus === 'Final Submitted' ||
+        s.PSstatus === 'Cancelled'
+    );
 
-          // ── FIX: also update trainingData so milestone dots update immediately ─
-          setTrainingData(prev => prev.map(t =>
+    if (allClosed) {
+      const statusRes = await fetch(
+        `${API_BASE_URL}/planning-route/updateStatus`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: selectedPlaningId,
+            emp_id: loggedInUser.emp_id,
+            user_name: loggedInUser.empname,
+            user_email: loggedInUser.user_email,
+            Status: 'Final Submitted',
+          }),
+        }
+      );
+
+      if (statusRes.ok) {
+        // Update the training row in the table only when truly all done
+        setTrainingData(prev =>
+          prev.map(t =>
             String(t.id) === String(selectedPlaningId)
               ? { ...t, Status: 'Final Submitted' }
               : t
-          ));
-
-          setOpenFeedbackDialog(false);
-        } else { showSnackbar('❌ Failed to update session status.', 'error'); }
-      } catch (e) {
-        console.error('Error updating session status:', e);
-        showSnackbar('⚠️ An error occurred while updating the status.', 'error');
+          )
+        );
+        showSnackbar('✅ All sessions closed — training marked as Final Submitted!');
       }
-      finally { setLoading(false); setSnackbarOpen(true); }
-    }, [API_BASE_URL, selectedPlaningId, selectedSessionId, loggedInUser, fetchSessionsForTraining, showSnackbar]);
+    } else {
+      showSnackbar('✅ Session closed successfully!');
+    }
 
+    setOpenFeedbackDialog(false);
+  } catch (e) {
+    console.error('Error updating session status:', e);
+    showSnackbar('⚠️ An error occurred while closing the session.', 'error');
+  } finally {
+    setLoading(false);
+  }
+}, [
+  API_BASE_URL,
+  selectedPlaningId,
+  selectedSessionId,
+  loggedInUser,
+  fetchSessionsForTraining,
+  showSnackbar,
+]);
 
   // ─── Files ────────────────────────────────────────────────────────────────
 
