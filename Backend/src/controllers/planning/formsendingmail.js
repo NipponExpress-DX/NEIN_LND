@@ -718,7 +718,8 @@ res.send(`
     <body>
         <div class="container">
             <div class="header">
-                <img src="/images/logo.png" alt="Nippon Express Logo">
+                <img src="${indexPath.hostvariable}/images/logo.png" alt="Nippon Express Logo">
+
                 <div class="title">
                     <h1>Training Session Trainee Feedback Form</h1>
                     <h1>- Human Resource Development</h1>
@@ -852,7 +853,8 @@ res.send(`
                 }
 
                 try {
-                    const validationResponse = await fetch("/planning-route/PlanningSessionActiveTrainees/FeedbackTraineeDataCheckPoint", {
+                    const validationResponse = await fetch("${indexPath.hostvariable}/planning-route/PlanningSessionActiveTrainees/FeedbackTraineeDataCheckPoint", {
+
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -1029,7 +1031,8 @@ res.send(`
                     // Hide validation summary
                     validationSummary.style.display = 'none';
                     
-                    const response = await fetch("/planning-route/PlanningSessionActiveTrainees/submitFeedbackTrainee", {
+                    const response = await fetch("${indexPath.hostvariable}/planning-route/PlanningSessionActiveTrainees/submitFeedbackTrainee", {
+
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -1085,10 +1088,13 @@ res.send(`
             });
             
             // Validation button click handler
-            document.getElementById("validateBtn").addEventListener("click", function() {
-                validateForm();
-            });
-            
+            // ✅ Guard it
+              const validateBtn = document.getElementById("validateBtn");
+              if (validateBtn) {
+                  validateBtn.addEventListener("click", function() {
+                      validateForm();
+                  });
+              }
             // Real-time validation for textarea questions
             document.querySelectorAll('.textarea-answer').forEach(textarea => {
                 textarea.addEventListener('input', function() {
@@ -1155,10 +1161,10 @@ exports.FeedbackTraineeDataCheckPoint = (req, res) => {
             attendance_status 
         } = empResults[0];
 
-        // Optional: Check attendance status if needed
-        // if (attendance_status !== 1) {
-        //     return res.status(404).json({ message: "Your Employee ID has not been recorded as attended for this training session." });
-        // }
+        //Optional: Check attendance status if needed
+        if (attendance_status !== 1) {
+            return res.status(404).json({ message: "Your Employee ID has not been recorded as attended for this training session." });
+        }
 
         if (feedback_form_answer) {
             return res.status(400).json({ message: "Feedback form already submitted." });
@@ -1828,7 +1834,8 @@ exports.FeedbackFormTrainer = (req, res, planing_id, session_no) => {
                                 <tr>
                                     <!-- LOGO -->
                                     <td class="logo-cell" rowspan="3">
-                                        <img src="/images/logo.png" alt="Nippon Express Logo">
+                                       <img src="${indexPath.hostvariable}/images/logo.png" alt="Nippon Express Logo">
+
                                     </td>
 
                                     <!-- CENTER BLOCK : COMPANY NAME -->
@@ -2111,7 +2118,8 @@ exports.FeedbackFormTrainer = (req, res, planing_id, session_no) => {
                                     }
 
                                     try {
-                                        const response = await fetch("/planning-route/PlanningSessionActiveTrainer/submitFeedbackTrainer", {
+                                        const response = await fetch("${indexPath.hostvariable}/planning-route/PlanningSessionActiveTrainer/submitFeedbackTrainer", {
+
                                             method: "POST",
                                             headers: {
                                                 "Content-Type": "application/json",

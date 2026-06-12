@@ -2479,7 +2479,7 @@ useEffect(() => {
                           if (v) {
                             setSelectedSession(v);
                             setSelectedSessionNo(v.session_no);
-                            fetchTrainees();
+                             fetchTrainees._loaded = false;
                                 setDraftRefreshKey(k => k + 1);
                           } else {
                             setSelectedSession(null);

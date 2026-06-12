@@ -25,6 +25,7 @@ import TrainingTopicMaster from '../Admin/Masters/masters/TraningTopicMaster';
 import Reports from '../Admin/Reports/Reports';
 import AuditLog from '../Admin/Reports/AuditLog';
 import FeedbackInfo from '../Admin/Reports/FeedbackInfo';
+import MonthlyTrainingReport from '../Admin/Reports/MonthlyTrainingReport.js';
 
 
 import ProtectedRoute from './ProtectedRoute';
@@ -55,6 +56,8 @@ function AppRoutes() {
             <Route path="setup" element={<SytemSetup />} />
             <Route path="reports" element={<Reports />} />
             <Route path="auditLog" element={<AuditLog />} />
+            <Route path="monthlyTrainingReport" element={<MonthlyTrainingReport />} />
+
             <Route path="FeedbackInfo" element={<FeedbackInfo />} />
             <Route path="lnd/traningtopicmaster" element={<TrainingTopicMaster />} />
             <Route path="lnd/trainingstaffcategory" element={<TrainingStaffCategory />} />

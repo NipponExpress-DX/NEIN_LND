@@ -933,108 +933,113 @@ function AdminDashboardContent() {
     } catch (e) { console.error('Error fetching drafted attendance:', e); }
   }, [API_BASE_URL, options]);
 
+// ── outside the component, at module level ──
+function chunkObject(obj, size) {
+  const entries = Object.entries(obj);
+  const chunks = [];
+  for (let i = 0; i < entries.length; i += size) {
+    chunks.push(Object.fromEntries(entries.slice(i, i + size)));
+  }
+  return chunks;
+}
 
+  const handleBulkSave = useCallback(async (
+    planingId,
+    sessionNo,
+    traineeMap,
+    walkInDetails = [],
+    { isDraft = false } = {},
+    inlineCoordCtx = null
+  ) => {
+    const coordCtx = inlineCoordCtx
+      || coordinatorContextRef.current
+      || sessionCoordinatorContext
+      || {};
 
-    const handleBulkSave = useCallback(async (
-  planingId,
-  sessionNo,
-  traineeMap,
-  walkInDetails = [],
-  { isDraft = false } = {},
-  inlineCoordCtx = null
-) => {
-  const coordCtx = inlineCoordCtx 
-    || coordinatorContextRef.current 
-    || sessionCoordinatorContext 
-    || {};
-
-  try {
-    const payload = {
-      planing_id: planingId,
-      session_no: sessionNo,
-    };
-
-    // ── 1. Regular trainees — accept ALL id formats (numeric or alphanumeric) ──
-    // ── 1. Regular trainees — accept ALL id formats ──
-    const cleanMap = {};
+    try {
+      // ── 1. Build clean trainee map ──
+      const cleanMap = {};
       if (traineeMap && typeof traineeMap === 'object') {
         Object.entries(traineeMap).forEach(([id, status]) => {
           const trimmedId = String(id).trim();
-
-          // ── Only skip truly invalid values ──
-          if (!trimmedId || trimmedId === 'ALL' || trimmedId === 'Other') {
-            console.warn(`[handleBulkSave] Skipping invalid ID: "${id}"`);
-            return;
-          }
-
-          cleanMap[trimmedId] = status;  // ✅ no parseInt, no numeric check
+          if (!trimmedId || trimmedId === 'ALL' || trimmedId === 'Other') return;
+          cleanMap[trimmedId] = status;
         });
       }
 
-    if (Object.keys(cleanMap).length > 0) {
-      payload.trainee_id = cleanMap;
-    }
+      // ── 2. Build walk-ins array ──
+      const walkIns = Array.isArray(walkInDetails) && walkInDetails.length > 0
+        ? walkInDetails.map(w => ({
+            trainee_name:       (w.trainee_name       || '').trim(),
+            trainee_mail:       (w.trainee_mail        || '').trim().toLowerCase(),
+            trainee_branch:     (w.trainee_branch      || '').trim(),
+            trainee_department: (w.trainee_department  || '').trim(),
+            trainee_id:         null,
+            attendance_status:  1,
+            coordinator_emp_id: coordCtx.coordinator_emp_id ?? null,
+            coordinator_name:   coordCtx.coordinator_name   ?? null,
+            coordinator_type:   coordCtx.coordinator_type   ?? null,
+          }))
+        : [];
 
-    // ── 2. Walk-in attendees ──────────────────────────────────────────────────
-    if (Array.isArray(walkInDetails) && walkInDetails.length > 0) {
-      payload.walk_ins = walkInDetails.map(w => ({
-        trainee_name:       (w.trainee_name       || '').trim(),
-        trainee_mail:       (w.trainee_mail        || '').trim().toLowerCase(),
-        trainee_branch:     (w.trainee_branch      || '').trim(),
-        trainee_department: (w.trainee_department  || '').trim(),
-        trainee_id:         null,
-        attendance_status:  1,
-        coordinator_emp_id: coordCtx.coordinator_emp_id ?? null,
-        coordinator_name:   coordCtx.coordinator_name   ?? null,
-        coordinator_type:   coordCtx.coordinator_type   ?? null,
-      }));
+      if (Object.keys(cleanMap).length === 0 && walkIns.length === 0) {
+        showSnackbar('⚠️ No attendance data to save.', 'warning');
+        return;
+      }
 
-      console.log(
-        `[handleBulkSave] Sending ${payload.walk_ins.length} walk-in(s) ` +
-        `with coordinator context:`, coordCtx,
-        payload.walk_ins
-      );
-    }
+      // ── 3. Chunk into batches of 100 ──
+      const BATCH_SIZE = 100;
+      const traineeChunks = Object.keys(cleanMap).length > 0
+        ? chunkObject(cleanMap, BATCH_SIZE)
+        : [{}];   // at least one batch so walk-ins get sent
 
-    if (!payload.trainee_id && (!payload.walk_ins || payload.walk_ins.length === 0)) {
-      showSnackbar('⚠️ No attendance data to save.', 'warning');
-      return;
-    }
+      console.log(`[handleBulkSave] ${Object.keys(cleanMap).length} trainees → ${traineeChunks.length} batch(es)`);
 
-    console.log('[handleBulkSave] Full payload →', JSON.stringify(payload, null, 2));
+      for (let i = 0; i < traineeChunks.length; i++) {
+        const batchPayload = {
+          planing_id: planingId,
+          session_no: sessionNo,
+          ...(Object.keys(traineeChunks[i]).length > 0 && { trainee_id: traineeChunks[i] }),
+          // Walk-ins only on first batch
+          ...(i === 0 && walkIns.length > 0 && { walk_ins: walkIns }),
+        };
 
-    const res = await axios.post(
-      `${API_BASE_URL}/planning-route/PlanningSessionActiveAttendanceStatus/update`,
-      payload
-    );
+        console.log(`[handleBulkSave] Batch ${i + 1}/${traineeChunks.length}`, Object.keys(traineeChunks[i]).length, 'trainees');
 
-    const successMsg = res.data?.message || '';
-    if (!successMsg.toLowerCase().includes('successfully')) {
-      showSnackbar(`❌ Save failed: ${successMsg}`, 'error');
-      return;
-    }
-
-    if (!isDraft) {
-      try {
-        await axios.post(
-          `${API_BASE_URL}/planning-route/session/updateStatus`,
-          { planing_id: planingId, session_no: sessionNo, PSstatus: 'Attendance Added' }
+        const res = await axios.post(
+          `${API_BASE_URL}/planning-route/PlanningSessionActiveAttendanceStatus/update`,
+          batchPayload,
+          { timeout: 60000 }
         );
-        await axios.post(
-          `${API_BASE_URL}/planning-route/updateStatus`,
-          {
-            id:         planingId,
-            emp_id:     loggedInUser.emp_id,
-            user_name:  loggedInUser.empname,
-            user_email: loggedInUser.user_email,
-            Status:     'Training Conducted',
-          }
-        );// ── NEW: send confirmation email to walk-in attendees ──────────────────
-          if (Array.isArray(walkInDetails) && walkInDetails.length > 0) {
-            const walkInEmails = walkInDetails
-              .filter(w => w.trainee_mail)
-              .map(w => w.trainee_mail);
 
+        const msg = res.data?.message || '';
+        if (!msg.toLowerCase().includes('successfully')) {
+          showSnackbar(`❌ Batch ${i + 1} failed: ${msg}`, 'error');
+          return;
+        }
+      }
+
+      // ── 4. Post-save actions (same as before) ──
+      if (!isDraft) {
+        try {
+          await axios.post(
+            `${API_BASE_URL}/planning-route/session/updateStatus`,
+            { planing_id: planingId, session_no: sessionNo, PSstatus: 'Attendance Added' }
+          );
+          await axios.post(
+            `${API_BASE_URL}/planning-route/updateStatus`,
+            {
+              id:         planingId,
+              emp_id:     loggedInUser.emp_id,
+              user_name:  loggedInUser.empname,
+              user_email: loggedInUser.user_email,
+              Status:     'Training Conducted',
+            }
+          );
+
+          // Walk-in confirmation emails (best-effort)
+          if (walkIns.length > 0) {
+            const walkInEmails = walkIns.filter(w => w.trainee_mail).map(w => w.trainee_mail);
             if (walkInEmails.length > 0) {
               try {
                 await fetch(
@@ -1043,41 +1048,40 @@ function AdminDashboardContent() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      planing_id:    planingId,
-                      session_no:    sessionNo,
-                      walkin_emails: walkInEmails,
-                      walkin_details: walkInDetails,  // full details for email template
+                      planing_id:     planingId,
+                      session_no:     sessionNo,
+                      walkin_emails:  walkInEmails,
+                      walkin_details: walkIns,
                     }),
                   }
                 );
               } catch (emailErr) {
                 console.warn('[handleBulkSave] Walk-in email failed (non-critical):', emailErr);
-                // Don't block the main flow — email is best-effort
               }
             }
           }
-      } catch (statusErr) {
-        console.error('[handleBulkSave] Status update failed:', statusErr);
-        showSnackbar('⚠️ Attendance saved but status update failed.', 'warning');
+        } catch (statusErr) {
+          console.error('[handleBulkSave] Status update failed:', statusErr);
+          showSnackbar('⚠️ Attendance saved but status update failed.', 'warning');
+        }
+
+        const updatedSessions = await fetchSessionsForTraining(planingId);
+        setSessionsData(prev => ({ ...prev, [planingId]: updatedSessions }));
+        showSnackbar('✅ Attendance submitted successfully!');
+      } else {
+        const updatedSessions = await fetchSessionsForTraining(planingId);
+        setSessionsData(prev => ({ ...prev, [planingId]: updatedSessions }));
+        showSnackbar('📝 Draft saved — you can continue editing.');
       }
 
-      const updatedSessions = await fetchSessionsForTraining(planingId);
-      setSessionsData(prev => ({ ...prev, [planingId]: updatedSessions }));
-      showSnackbar('✅ Attendance submitted successfully!');
-    } else {
-      const updatedSessions = await fetchSessionsForTraining(planingId);
-      setSessionsData(prev => ({ ...prev, [planingId]: updatedSessions }));
-      showSnackbar('📝 Draft saved — you can continue editing.');
+    } catch (err) {
+      console.error('[handleBulkSave] Unexpected error:', err);
+      showSnackbar(
+        err.response?.data?.message || err.message || '❌ An unexpected error occurred.',
+        'error'
+      );
     }
-
-  } catch (err) {
-    console.error('[handleBulkSave] Unexpected error:', err);
-    showSnackbar(
-      err.response?.data?.message || err.message || '❌ An unexpected error occurred.',
-      'error'
-    );
-  }
-}, [API_BASE_URL, loggedInUser, sessionCoordinatorContext, showSnackbar, fetchSessionsForTraining]);
+  }, [API_BASE_URL, loggedInUser, sessionCoordinatorContext, showSnackbar, fetchSessionsForTraining]);
 
   const handleOpenAttendanceDialog = useCallback((session) => {
     setSelectedOptions([]);

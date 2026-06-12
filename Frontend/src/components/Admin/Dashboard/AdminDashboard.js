@@ -4,25 +4,17 @@ import '../../../css/Admincss/AdminDashboard.css';
 
 // Modern icon imports that match Nippon Express purple and green theme
 import {Modal} from "@mui/material";
-import { BsBarChartFill } from 'react-icons/bs';          // Training Summary
-import { FiUsers } from 'react-icons/fi';                 // Masters
-import { HiOutlineDocumentReport } from 'react-icons/hi'; // Reports
+
 import { FiChevronDown, FiChevronRight, FiMenu } from 'react-icons/fi'; // Arrows and menu
-import { IoStatsChartOutline, IoTimeOutline, IoChatbubbleEllipsesOutline } from 'react-icons/io5'; // Submenu icons
-import dashboard from '../../../images/dashboard.png';   
-import training from '../../../images/training.png';   
-import login from '../../../images/login.png';   
-import marketing from '../../../images/marketing.png';   
-import report from '../../../images/report.png';   
-import feedback from '../../../images/feedback.png';   
-import investigation from '../../../images/investigation.png';   
+  
 import { IoSpeedometer } from 'react-icons/io5';
 import { FaUsersGear } from "react-icons/fa6";
 import { FaChartBar, FaChevronDown, FaChevronRight } from "react-icons/fa";
-import { RiAdminFill } from "react-icons/ri";
 import { GiProgression } from "react-icons/gi";
-import { FaPersonCircleCheck } from "react-icons/fa6";
-
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import FeedbackIcon from '@mui/icons-material/Feedback';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import HistoryIcon from '@mui/icons-material/History';
 
 function AdminDashboard() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true); 
@@ -37,7 +29,8 @@ const manualPath = process.env.PUBLIC_URL + "/videos/Learning_Development_Manual
 
     // Get role permissions from sessionStorage
     const rolePermissions = JSON.parse(sessionStorage.getItem("rolePermissions")) || {};
-    
+    console.log("Reports permissions:", JSON.stringify(rolePermissions["Reports"], null, 2));
+
     // Fixed video path - try multiple approaches
     const videoPath = '/videos/l&d.mp4'; // Direct path from public folder
     // Alternative paths to try:
@@ -165,56 +158,30 @@ const manualPath = process.env.PUBLIC_URL + "/videos/Learning_Development_Manual
                             {/* Show submenu items for Reports only when showReportsSubmenu is true */}
                             {showReportsSubmenu && (
                                 <ul className={`submenu ${isSidebarCollapsed ? 'collapsed-submenu' : ''}`}>
-                                    {hasReportAccess("Reports") && (
+                                    
+
+                                    {(hasReportAccess("MonthlyTrainingReport") || hasAccess("Reports")) && (
                                         <li className="submenu-item">
                                             <Link
-                                                to="reports"
-                                                className={`submenu-link ${selectedMenu === 'reports' ? 'selected' : ''}`}
-                                                onClick={() => handleMenuClick('reports')}
-                                                title="Training Reports"
+                                                to="monthlyTrainingReport"
+                                                className={`submenu-link ${selectedMenu === 'monthlyTrainingReport' ? 'selected' : ''}`}
+                                                onClick={() => handleMenuClick('monthlyTrainingReport')}
+                                                title="Monthly Training Report"
                                             >
                                                 <div className="icon-container">
-                                                    <img 
-                                                        src={report} 
-                                                        alt="Training Reports" 
-                                                        className="icon" 
-                                                        style={{ 
-                                                            width: '20px', 
-                                                            height: '20px', 
-                                                            objectFit: 'contain' 
-                                                        }} 
+                                                    {/* ✅ distinct icon — calendar with month grid */}
+                                                    <CalendarMonthIcon
+                                                        sx={{
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            color: selectedMenu === 'monthlyTrainingReport' ? '#8EC400' : 'inherit',
+                                                        }}
                                                     />
                                                 </div>
-                                                {!isSidebarCollapsed && <span>Training Reports</span>}
+                                                {!isSidebarCollapsed && <span>Monthly Training Report</span>}
                                             </Link>
                                         </li>
                                     )}
-
-                                    {hasReportAccess("AuditLog") && (
-                                        <li className="submenu-item">
-                                            <Link
-                                                to="auditLog"
-                                                className={`submenu-link ${selectedMenu === 'auditLog' ? 'selected' : ''}`}
-                                                onClick={() => handleMenuClick('auditLog')}
-                                                title="Audit Log"
-                                            >
-                                                <div className="icon-container">
-                                                    <img 
-                                                        src={investigation} 
-                                                        alt="Audit Log" 
-                                                        className="icon" 
-                                                        style={{ 
-                                                            width: '20px', 
-                                                            height: '20px', 
-                                                            objectFit: 'contain' 
-                                                        }} 
-                                                    />
-                                                </div>
-                                                {!isSidebarCollapsed && <span>Audit Log</span>}
-                                            </Link>
-                                        </li>
-                                    )}
-
                                     {hasReportAccess("FeedbackInfo") && (
                                         <li className="submenu-item">
                                             <Link
@@ -224,18 +191,59 @@ const manualPath = process.env.PUBLIC_URL + "/videos/Learning_Development_Manual
                                                 title="Feedback Info"
                                             >
                                                 <div className="icon-container">
-                                                    <img 
-                                                        src={feedback} 
-                                                        alt="Feedback Info" 
-                                                        className="icon" 
-                                                        style={{ 
-                                                            width: '20px', 
-                                                            height: '20px', 
-                                                            objectFit: 'contain' 
-                                                        }} 
+                                                    <FeedbackIcon
+                                                        sx={{
+                                                            width: 20,
+                                                            height: 20,
+                                                            color: selectedMenu === 'feedbackInfo' ? '#8EC400' : 'inherit',
+                                                        }}
                                                     />
                                                 </div>
                                                 {!isSidebarCollapsed && <span>Feedback Info</span>}
+                                            </Link>
+                                        </li>
+                                    )}
+                                   
+                                        
+                                    {hasReportAccess("Reports") && (
+                                        <li className="submenu-item">
+                                            <Link
+                                                to="reports"
+                                                className={`submenu-link ${selectedMenu === 'reports' ? 'selected' : ''}`}
+                                                onClick={() => handleMenuClick('reports')}
+                                                title="Training Reports"
+                                            >
+                                                <div className="icon-container">
+                                                    <AssessmentIcon
+                                                            sx={{
+                                                                width: 20,
+                                                                height: 20,
+                                                                color: selectedMenu === 'reports' ? '#8EC400' : 'inherit',
+                                                            }}
+                                                        />
+                                                </div>
+                                                {!isSidebarCollapsed && <span>Training Reports</span>}
+                                            </Link>
+                                        </li>
+                                    )}
+                                        {hasReportAccess("AuditLog") && (
+                                        <li className="submenu-item">
+                                            <Link
+                                                to="auditLog"
+                                                className={`submenu-link ${selectedMenu === 'auditLog' ? 'selected' : ''}`}
+                                                onClick={() => handleMenuClick('auditLog')}
+                                                title="Audit Log"
+                                            >
+                                                <div className="icon-container">
+                                                    <HistoryIcon
+                                                    sx={{
+                                                        width: 20,
+                                                        height: 20,
+                                                        color: selectedMenu === 'auditLog' ? '#8EC400' : 'inherit',
+                                                    }}
+                                                />
+                                                </div>
+                                                {!isSidebarCollapsed && <span>Audit Log</span>}
                                             </Link>
                                         </li>
                                     )}

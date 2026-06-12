@@ -1,4 +1,70 @@
+// // Load environment variables
+// require('dotenv').config();
+
+// const express = require('express');
+// const cors = require('cors');
+// const cron = require('node-cron');
+// const path = require('path');
+// const fs = require('fs');
+// const https = require('https');
+
+// // Import routes
+// const loginRoutes = require('./src/routes/login');
+// const trainingMaster = require('./src/routes/training_master');
+// const planningRoutes = require('./src/routes/planning');
+// const traineeInfoRoutes = require('./src/routes/Trainee');
+// const roleRoutes = require('./src/routes/roleRoute');
+// const ListnesRoutes = require('./src/routes/Listners');
+// const Reports = require('./src/routes/reports');
+// const Dashboard = require('./src/routes/dashboard');
+
+
+// // Create Express app
+// const app = express();
+
+// // Enable CORS
+// app.use(cors());
+
+// // Middleware
+// app.use(express.json());
+
+// // Serve static files from 'public' folder
+// app.use('', express.static(path.join(__dirname, 'public')));
+
+// // Route mapping
+// app.use('/login', loginRoutes);
+// app.use('/training-master', trainingMaster);
+// app.use('/planning-route', planningRoutes);
+// app.use('/trainee-info', traineeInfoRoutes);
+// app.use('/roleRoutes', roleRoutes);
+// app.use('/ListnesRoutes', ListnesRoutes);
+// app.use('/reports', Reports);
+// app.use('/dashboard', Dashboard);
+
+// // 404 handler
+// app.use((req, res) => {
+//     res.status(404).json({ error: 'Route not found' });
+// });
+
+// // Global error handler
+// app.use((err, req, res, next) => {
+//     console.error('Unhandled Error:', err.stack);
+//     res.status(500).json({ error: 'Internal Server Error' });
+// });
+
+// // Start server
+// // const PORT = 8188;
+//  const NODE_ENV = 'production';
+
+// app.listen(8188, '0.0.0.0', () => {
+//     console.log("Running on 8188");
+// });
+ 
+
+
+
 // Load environment variables
+
 require('dotenv').config();
 
 const express = require('express');
@@ -19,7 +85,6 @@ const Reports = require('./src/routes/reports');
 const Dashboard = require('./src/routes/dashboard');
 
 // Cron controller
-const { sendFeedbackFormEmailTrainee } = require('./src/controllers/planning/shedulermail');
 
 // Create Express app
 const app = express();
@@ -82,8 +147,7 @@ if (NODE_ENV === 'production') {
 if (NODE_ENV === 'production') {
     cron.schedule("10 19 * * *", async () => {
         try {
-            console.log("⏰ Running scheduled email task at:", new Date());
-            await sendFeedbackFormEmailTrainee();
+           console.log(`🚀 cron.schedule("10 19 * * *`);
         } catch (error) {
             console.error("❌ Error in scheduler task:", error);
         }

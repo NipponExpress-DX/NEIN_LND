@@ -11,7 +11,9 @@ const {
     
 } = require('../controllers/reports/reports');
 
-
+const { MonthlyTrainingReport, MonthlyReportFilterOptions } = require('../controllers/reports/monthlyTrainingReport.controller');
+router.post('/monthly-training-report', MonthlyTrainingReport);
+router.get('/monthly-training-report/filter-options', MonthlyReportFilterOptions);
 
 // Route to get all training topics
 router.post('/ReportsTotalHoursSpend', (req, res) => {
