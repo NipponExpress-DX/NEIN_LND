@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const autoSendMail = require('../controllers/planning/sendmail');
+const indexPath = require('../variable'); 
 
 // Setup Multer for file uploads
 const dirname = 'E:/neinSoft/files/Nippon-LND/Query';
@@ -1586,4 +1587,265 @@ exports.sendPlanningPostPoneCreatorNotification = async (req, res) => {
     return res.status(500).json({ error: "Failed to send postponement notification", details: error.message });
   }
 };
- 
+
+
+exports.sendCertificates = async (req, res) => {
+  const { planing_id, session_no } = req.body;
+  const files = req.files || [];
+  const NX_BADGE_PATH = path.join(
+    'E:',
+    'DX-LND',
+    'NEIN-LND',
+    'Backend',
+    'public',
+    'images',
+    'nx-badge.png'
+  );
+  if (!planing_id || !session_no) {
+    return res.status(400).json({ error: "planing_id and session_no are required." });
+  }
+  if (!files.length) {
+    return res.status(400).json({ error: "No certificate files uploaded." });
+  }
+
+  try {
+    const [submittedTrainees] = await hrmdb.promise().query(
+      `SELECT trainee_id, trainee_name, trainee_mail, feedback_form_submition_date,
+              certificate_sent_status, certificate_sent_date
+       FROM planing_session_trainee_data
+       WHERE planing_id = ?
+         AND session_no = ?
+         AND calDeleteStatus = 0
+         AND attendance_status = 1
+         AND feedback_form_answer IS NOT NULL
+         AND feedback_form_answer != ''`,
+      [planing_id, session_no]
+    );
+
+    if (!submittedTrainees.length) {
+      return res.status(404).json({ error: "No trainees with submitted feedback found for this session." });
+    }
+
+    const traineeMap = new Map();
+    submittedTrainees.forEach(t => {
+      traineeMap.set(String(t.trainee_id).trim(), t);
+    });
+
+    const [trainingDetails] = await hrmdb.promise().query(`
+      SELECT tt.training_topic, ps.session_date
+      FROM planning_training_table pt
+      JOIN planing_sessions ps ON pt.id = ps.planing_id AND ps.session_no = ?
+      JOIN training_topic tt ON pt.training_topic_id = tt.id
+      WHERE pt.id = ?
+      LIMIT 1
+    `, [session_no, planing_id]);
+
+    const training_topic = trainingDetails[0]?.training_topic || 'Training Session';
+    const formattedDate = trainingDetails[0]?.session_date
+      ? new Date(trainingDetails[0].session_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+      : '';
+
+    let sent = 0;
+    const skipped = [];
+
+    for (const file of files) {
+      const empId = path.basename(file.originalname, path.extname(file.originalname)).trim();
+      const trainee = traineeMap.get(empId);
+
+      if (!trainee) {
+        skipped.push(`${file.originalname} — no matching trainee (not submitted / not found)`);
+        try { fs.unlinkSync(file.path); } catch {}
+        continue;
+      }
+      if (!trainee.trainee_mail || !trainee.trainee_mail.includes('@')) {
+        skipped.push(`${file.originalname} — ${trainee.trainee_name} has no valid email`);
+        try { fs.unlinkSync(file.path); } catch {}
+        continue;
+      }
+
+    const emailBody = buildCertificateEmail(trainee.trainee_name, training_topic, formattedDate);
+
+      try {
+        await autoSendMail(
+          '',
+          trainee.trainee_mail,
+          '',
+          emailBody,
+          `NEIN L&D | Certificate of Completion - ${training_topic}`,
+          [
+            { filename: `Certificate_${empId}.pdf`, path: file.path },
+            { path: NX_BADGE_PATH, contentType: 'image/png', cid: 'nxBadge' }
+          ]
+        );
+        sent++;
+
+        // ── NEW: mark as sent in DB ──
+        await hrmdb.promise().query(
+          `UPDATE planing_session_trainee_data
+           SET certificate_sent_status = 1, certificate_sent_date = NOW()
+           WHERE planing_id = ? AND session_no = ? AND trainee_id = ?`,
+          [planing_id, session_no, trainee.trainee_id]
+        );
+      } catch (err) {
+        console.error(`Failed to send certificate to ${trainee.trainee_mail}:`, err);
+        skipped.push(`${file.originalname} — send failed (${trainee.trainee_mail})`);
+      } finally {
+        try { fs.unlinkSync(file.path); } catch {}
+      }
+    }
+
+    const uploadedIds = new Set(files.map(f => path.basename(f.originalname, path.extname(f.originalname)).trim()));
+    const missingCertificates = submittedTrainees
+      .filter(t => !uploadedIds.has(String(t.trainee_id).trim()))
+      .map(t => `${t.trainee_name} (${t.trainee_id})`);
+
+    return res.status(200).json({
+      message: 'Certificates processed.',
+      sent,
+      skipped,
+      missingCertificates,
+    });
+  } catch (error) {
+    console.error('sendCertificates error:', error);
+    return res.status(500).json({ error: 'Failed to send certificates', details: error.message });
+  }
+};
+
+// ── Helper function — add this too ──
+
+function toTitleCase(str) {
+  return (str || "")
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function buildCertificateEmail(traineeName, trainingTopic, formattedDate) {
+  const displayName = toTitleCase(traineeName);
+  const nxBadgeCid = 'nxBadge';
+
+
+  return `<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background-color:#f4f6fb;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f6fb;">
+  <tr><td align="center" style="padding:28px 12px;">
+    <table width="800" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #dde0e8;">
+
+      <!-- Top colour bar -->
+      <tr><td style="padding:0;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td width="50%" style="background-color:#8EC400;height:6px;font-size:0;">&nbsp;</td>
+          <td width="50%" style="background-color:#1A005D;height:6px;font-size:0;">&nbsp;</td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Header -->
+      <tr><td style="padding:46px 50px 30px;text-align:center;">
+       <img src="cid:${nxBadgeCid}" alt="Nippon Express Achievement Badge"
+          width="150" height="150"
+          style="display:block;margin:0 auto 16px auto;width:130px;height:130px;object-fit:contain;" />
+        <p style="margin:0 0 6px 0;font-size:28px;font-weight:bold;color:#1A005D;letter-spacing:0.5px;">
+          Congratulations
+        </p>
+        <p style="margin:0;font-size:14px;color:#777;">
+          ${trainingTopic}${formattedDate ? ` &mdash; ${formattedDate}` : ''}
+        </p>
+      </td></tr>
+
+      <!-- Divider -->
+      <tr><td style="padding:0 40px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td width="40%" style="background-color:#e8e8e8;height:1px;font-size:0;">&nbsp;</td>
+          <td width="20%" style="background-color:#8EC400;height:2px;font-size:0;">&nbsp;</td>
+          <td width="40%" style="background-color:#e8e8e8;height:1px;font-size:0;">&nbsp;</td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Body -->
+      <tr><td style="padding:28px 40px 32px;">
+
+        <p style="margin:0 0 18px 0;font-size:15px;color:#222;">
+          Dear <b style="color:#1A005D;">${displayName},</b>
+        </p>
+
+        <p style="margin:0 0 18px 0;font-size:14px;color:#555;line-height:1.85;">
+          Please find enclosed your <b style="color:#1A005D;">&ldquo;Certificate&rdquo;</b> in recognition of your participation and successful completion of the program.
+        </p>
+
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px 0;">
+          <tr>
+            <td width="4" style="background-color:#8EC400;border-radius:4px;font-size:0;">&nbsp;</td>
+            <td style="padding:10px 16px;">
+              <p style="margin:0;font-size:14px;color:#1A005D;font-style:italic;line-height:1.8;">
+                &ldquo;Learning is a continuous journey, and we look forward to your participation
+                in future learning and development initiatives.&rdquo;
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:0 0 18px 0;font-size:14px;color:#555;line-height:1.85;">
+          Congratulations on successfully completing the training session and submitting your valuable feedback.
+          We appreciate your engagement and commitment to continuous learning.
+        </p>
+
+        <p style="margin:0 0 28px 0;font-size:14px;color:#555;line-height:1.85;">
+          Thank you for your participation, and we look forward to your involvement in future learning
+          initiatives at our <b style="color:#1A005D;">Growth Hub</b>.
+        </p>
+
+        <p style="margin:0;font-size:14px;color:#222;line-height:1.7;">
+          Best Regards,<br>
+          <b style="color:#1A005D;">Learning &amp; Development Team</b>
+        </p>
+
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td style="background-color:#f4f6fb;padding:20px 40px;text-align:center;border-top:3px solid #8EC400;">
+        <p style="margin:0 0 4px 0;font-size:13px;font-weight:bold;color:#1A005D;">
+          Nippon Express (India) Private Limited
+        </p>
+        <p style="margin:0;font-size:11px;color:#aaa;">This is a system-generated email. Please do not reply.</p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getCertificateStatus — returns per-trainee feedback submission + certificate status
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getCertificateStatus = async (req, res) => {
+  const { planing_id, session_no } = req.body;
+
+  if (!planing_id || !session_no) {
+    return res.status(400).json({ error: "planing_id and session_no are required." });
+  }
+
+  try {
+    const [rows] = await hrmdb.promise().query(
+      `SELECT trainee_id, trainee_name, trainee_mail,
+              feedback_form_submition_date,
+              certificate_sent_status, certificate_sent_date
+       FROM planing_session_trainee_data
+       WHERE planing_id = ?
+         AND session_no = ?
+         AND calDeleteStatus = 0
+         AND attendance_status = 1
+         AND feedback_form_answer IS NOT NULL
+         AND feedback_form_answer != ''
+       ORDER BY trainee_name ASC`,
+      [planing_id, session_no]
+    );
+
+    return res.status(200).json({ trainees: rows });
+  } catch (error) {
+    console.error('getCertificateStatus error:', error);
+    return res.status(500).json({ error: 'Failed to fetch certificate status', details: error.message });
+  }
+};

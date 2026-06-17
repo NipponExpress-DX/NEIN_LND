@@ -23,30 +23,32 @@ async function autoSendMail(from = "", to, cc, body, subject, attachments = [], 
         }));
 
         // Process attachments
-        const formattedAttachments = [];
-        for (const file of attachments) {
-            try {
-                if (file.filename && file.content) {
-                    formattedAttachments.push({
-                        "@odata.type": "#microsoft.graph.fileAttachment",
-                        name: file.filename,
-                        contentBytes: Buffer.from(file.content).toString('base64'),
-                        contentType: "application/octet-stream"
-                    });
-                } else if (file.path) {
-                    const fileContent = await fs.promises.readFile(file.path);
-                    formattedAttachments.push({
-                        "@odata.type": "#microsoft.graph.fileAttachment",
-                        name: path.basename(file.path),
-                        contentBytes: fileContent.toString('base64'),
-                        contentType: "application/octet-stream"
-                    });
+        // Process attachments
+                const formattedAttachments = [];
+                for (const file of attachments) {
+                    try {
+                        if (file.filename && file.content) {
+                            formattedAttachments.push({
+                                "@odata.type": "#microsoft.graph.fileAttachment",
+                                name: file.filename,
+                                contentBytes: Buffer.from(file.content).toString('base64'),
+                                contentType: file.contentType || "application/octet-stream",
+                                ...(file.cid ? { isInline: true, contentId: file.cid } : {})
+                            });
+                        } else if (file.path) {
+                            const fileContent = await fs.promises.readFile(file.path);
+                            formattedAttachments.push({
+                                "@odata.type": "#microsoft.graph.fileAttachment",
+                                name: path.basename(file.path),
+                                contentBytes: fileContent.toString('base64'),
+                                contentType: file.contentType || "application/octet-stream",
+                                ...(file.cid ? { isInline: true, contentId: file.cid } : {})
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`⚠️ Error processing attachment ${file.filename || file.path}:`, error.message);
+                    }
                 }
-            } catch (error) {
-                console.error(`⚠️ Error processing attachment ${file.filename || file.path}:`, error.message);
-            }
-        }
-
         const messageBody = {
             subject: subject || "No Subject",
             body: {

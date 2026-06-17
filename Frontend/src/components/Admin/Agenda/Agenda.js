@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState, useRef, useMemo } from "react"
 import debounce from "lodash.debounce";
 import { DatePicker } from "@mui/x-date-pickers";
 import axios from "axios";
+import RichEmailComposer from "./RichEmailComposer";
+
 import {
   Tooltip, FormControlLabel, Switch, Tab, Tabs, InputAdornment,
   Autocomplete, Snackbar, Alert, Table, TableBody, TableContainer,
@@ -3002,20 +3004,14 @@ useEffect(() => {
 
                         {/* Custom message */}
                         <Grid item xs={12}>
-                          <Typography sx={{ fontWeight: 700, color: "#1A005D", fontSize: "14px", mb: 0.5 }}>
-                            💬 Custom Message to Trainees <Typography component="span" sx={{ color: "#999", fontSize: "12px", fontWeight: 400 }}>(optional)</Typography>
-                          </Typography>
-                          <TextField
-                            multiline minRows={4} maxRows={10} fullWidth size="small"
-                            placeholder={"E.g.\nGet ready! 🚀 This isn't just another meeting — it's your all-access pass to exciting updates...\n\nBring your energy and let's make this one to remember!"}
-                            value={composeMessage}
-                            onChange={(e) => setComposeMessage(e.target.value)}
-                            InputProps={{ sx: { fontFamily: "inherit", fontSize: "14px", lineHeight: 1.7 } }}
-                          />
-                          <Typography variant="caption" sx={{ color: "#999" }}>
-                            Plain text or basic HTML supported. Emoji encouraged! 🎉
-                          </Typography>
-                        </Grid>
+                            <Typography sx={{ fontWeight: 700, color: "#1A005D", fontSize: "14px", mb: 0.5 }}>
+                              💬 Custom Message to Trainees{" "}
+                              <Typography component="span" sx={{ color: "#999", fontSize: "12px", fontWeight: 400 }}>
+                                (optional)
+                              </Typography>
+                            </Typography>
+                            <RichEmailComposer value={composeMessage} onChange={setComposeMessage} />
+                          </Grid>
 
                         {/* Preview note */}
                         <Grid item xs={12}>

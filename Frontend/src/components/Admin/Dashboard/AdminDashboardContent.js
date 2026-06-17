@@ -374,6 +374,15 @@ function AdminDashboardContent() {
   const [otherTrainees, setOtherTrainees] = useState([]);
   const [options, setOptions] = useState([]);
 
+  const [certFiles, setCertFiles] = useState([]);
+  const [certUploading, setCertUploading] = useState(false);
+  const [certResult, setCertResult] = useState(null);
+
+  const [certificateStatusList, setCertificateStatusList] = useState([]);
+  const [certStatusLoading, setCertStatusLoading] = useState(false);
+
+  const [certDialogOpen, setCertDialogOpen] = useState(false);
+
   // ── Form ──
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [formType, setFormType] = useState('');
@@ -1383,7 +1392,7 @@ const openEffectivenessDialog = useCallback((planingId, sessionNo) => {
   // ── Store in local vars AND state ──
   setSelectedPlaningId(planing_id);
   setSelectedSessionId(session_no);
-
+  fetchCertificateStatus(planing_id, session_no);
   try {
     // ── 1. Fetch attendance for THIS specific session ──
     let attendeeIdSet = new Set();
@@ -1425,6 +1434,19 @@ const openEffectivenessDialog = useCallback((planingId, sessionNo) => {
     setSubmittedTrainees(submitted);
     setPendingTrainees(pending);
 
+    // Fetch the assigned deadline for this session
+    const deadlineRes = await fetch(
+      `${API_BASE_URL}/training-master/FeedbackFormQuestions/getDeadline`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planing_id, session_no })
+      }
+    );
+    const deadlineData = await deadlineRes.json();
+    setFinalSubmitDate(
+      deadlineData.deadline ? dayjs(deadlineData.deadline) : null
+    );
     // ── 3. Fetch trainer feedback for THIS planing_id + session_no ──
     const trainerRes = await fetch(
       `${API_BASE_URL}/training-master/FeedbackFormQuestions/InforOfTrainer`,
@@ -1696,6 +1718,62 @@ const handleConfirmSubmit = useCallback(async () => {
     finally { setDownloadingFile(null); }
   }, [API_BASE_URL, currentPlanId, currentSessionNo]);
 
+
+    const handleCertFileSelection = useCallback((event) => {
+      setCertFiles(Array.from(event.target.files));
+      setCertResult(null);
+    }, []);
+
+  const fetchCertificateStatus = useCallback(async (planingId, sessionNo) => {
+    if (!planingId || !sessionNo) return;
+    setCertStatusLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/ListnesRoutes/notification/getCertificateStatus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planing_id: planingId, session_no: sessionNo }),
+      });
+      const data = await res.json();
+      setCertificateStatusList(data.trainees || []);
+    } catch (e) {
+      console.error('Error fetching certificate status:', e);
+      setCertificateStatusList([]);
+    } finally {
+      setCertStatusLoading(false);
+    }
+  }, [API_BASE_URL]);
+
+  const handleSendCertificates = useCallback(async () => {
+    if (!certFiles.length || !selectedPlaningId || !selectedSessionId) {
+      showSnackbar('❌ Please select certificate files first.', 'error');
+      return;
+    }
+    setCertUploading(true);
+    setCertResult(null);
+    const fd = new FormData();
+    fd.append('planing_id', selectedPlaningId);
+    fd.append('session_no', selectedSessionId);
+    certFiles.forEach((f) => fd.append('certificates', f));
+
+    try {
+      const res = await axios.post(
+        `${API_BASE_URL}/ListnesRoutes/notification/sendCertificates`,
+        fd,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      setCertResult(res.data);
+      showSnackbar(
+        `✅ Certificates sent: ${res.data.sent}, skipped: ${res.data.skipped?.length || 0}`,
+        res.data.sent > 0 ? 'success' : 'warning'
+      );
+      setCertFiles([]);
+      await fetchCertificateStatus(selectedPlaningId, selectedSessionId); // ← NEW
+    } catch (e) {
+      showSnackbar(e.response?.data?.error || e.response?.data?.message || 'Failed to send certificates.', 'error');
+    } finally {
+      setCertUploading(false);
+    }
+  }, [certFiles, selectedPlaningId, selectedSessionId, API_BASE_URL, showSnackbar, fetchCertificateStatus]);
   // ─── Form handlers ─────────────────────────────────────────────────────────
 
   const validateForm = useCallback(() => {
@@ -2158,14 +2236,85 @@ const handleConfirmSubmit = useCallback(async () => {
       if (noActionNeeded) return (<MenuItem disabled><Typography color="error">No Action Taken</Typography></MenuItem>);
     }
 
-    if (session.PSstatus === 'Attendance Added') return (<MenuItem onClick={() => {
-      setActionMenuMap({});                      // ← ADD THIS
-      openEffectivenessDialog(session.planing_id, session.session_no);
-    }}><NextPlanIcon color="primary" />Training Effectiveness</MenuItem>);
-    if (session.PSstatus === 'Training Effectiveness') return (<MenuItem onClick={() => {
-      setActionMenuMap({});                      // ← ADD THIS
-      handleOpenFeedbackDialog(session.planing_id, session.session_no);
-    }}><NextPlanIcon color="primary" />Assign Feedback Form</MenuItem>);
+    // if (session.PSstatus === 'Attendance Added') return (<MenuItem onClick={() => {
+    //   setActionMenuMap({});                      // ← ADD THIS
+    //   openEffectivenessDialog(session.planing_id, session.session_no);
+    // }}><NextPlanIcon color="primary" />Training Effectiveness</MenuItem>);
+    // if (session.PSstatus === 'Training Effectiveness') return (<MenuItem onClick={() => {
+    //   setActionMenuMap({});                      // ← ADD THIS
+    //   handleOpenFeedbackDialog(session.planing_id, session.session_no);
+    // }}><NextPlanIcon color="primary" />Assign Feedback Form</MenuItem>);
+    if (
+  session.PSstatus === 'Attendance Added' ||
+  session.PSstatus === 'Training Effectiveness'
+    ) {
+      return (
+        <>
+          {session.PSstatus === 'Attendance Added' && (
+            <MenuItem onClick={() => {
+              setActionMenuMap({});
+              openEffectivenessDialog(session.planing_id, session.session_no);
+            }}>
+              <NextPlanIcon color="primary" /> Training Effectiveness
+            </MenuItem>
+          )}
+          {session.PSstatus === 'Training Effectiveness' && (
+            <MenuItem onClick={() => {
+              setActionMenuMap({});
+              handleOpenFeedbackDialog(session.planing_id, session.session_no);
+            }}>
+              <NextPlanIcon color="primary" /> Assign Feedback Form
+            </MenuItem>
+          )}
+          <MenuItem
+            onClick={async () => {
+              setActionMenuMap({});
+              if (!window.confirm('Close this session without feedback? This cannot be undone.')) return;
+              try {
+                const res = await fetch(
+                  `${API_BASE_URL}/training-master/FeedbackFormQuestions/closeSessionAfterAttendance`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      planing_id: session.planing_id,
+                      session_no: session.session_no,
+                      emp_id: loggedInUser.emp_id,
+                      user_name: loggedInUser.empname,
+                      user_email: loggedInUser.user_email,
+                    }),
+                  }
+                );
+                const data = await res.json();
+                if (res.ok) {
+                  showSnackbar(data.trainingFinalized
+                    ? '✅ Session closed — Training marked as Final Submitted!'
+                    : '✅ Session closed successfully.');
+                  const updated = await fetchSessionsForTraining(session.planing_id);
+                  setSessionsData(prev => ({ ...prev, [session.planing_id]: updated }));
+                  if (data.trainingFinalized) {
+                    setTrainingData(prev =>
+                      prev.map(t =>
+                        String(t.id) === String(session.planing_id)
+                          ? { ...t, Status: 'Final Submitted' }
+                          : t
+                      )
+                    );
+                  }
+                } else {
+                  showSnackbar(`❌ ${data.error}`, 'error');
+                }
+              } catch (e) {
+                showSnackbar('❌ Failed to close session.', 'error');
+              }
+            }}
+            sx={{ color: '#d32f2f' }}
+          >
+            <CancelIcon color="error" /> Close Session (Skip Feedback)
+          </MenuItem>
+        </>
+      );
+    }
     if (session.PSstatus === 'Feedback Assigned') return (
         <MenuItem onClick={() => {
       setActionMenuMap({});                      // ← ADD THIS
@@ -2176,8 +2325,10 @@ const handleConfirmSubmit = useCallback(async () => {
       );
     if (training.status === 'Final Submitted') return (<MenuItem disabled><CancelIcon color="primary" />Session closed</MenuItem>);
     return null;
-  }, [navigateToAgenda, handleOpenAttendanceDialog, openEffectivenessDialog, handleOpenFeedbackDialog, HandleAwaitingFeedback]);
-
+  }, [navigateToAgenda, handleOpenAttendanceDialog, openEffectivenessDialog, 
+      handleOpenFeedbackDialog, HandleAwaitingFeedback, 
+      loggedInUser,        // ← add this
+      fetchSessionsForTraining, showSnackbar, API_BASE_URL]);  
   // ─── Filters component ────────────────────────────────────────────────────
 
   const Filters = useCallback(({ isAdmin }) => (
@@ -2886,6 +3037,26 @@ const handleConfirmSubmit = useCallback(async () => {
                   )}
                 </Box>
 
+                <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<SchoolIcon />}
+                      onClick={() => setCertDialogOpen(true)}
+                      sx={{ borderColor: '#1A005D', color: '#1A005D', textTransform: 'none', borderRadius: 2 }}
+                    >
+                    Manage Training Certificates
+                  </Button>
+                </Box>
+
+                {/* Feedback form deadline visibility */}
+                    {finalSubmitDate && (
+                      <Box sx={{ mb: 1, px: 1.5, py: 1, backgroundColor: '#EDE7F6', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CalendarTodayIcon sx={{ color: '#1A005D', fontSize: 18 }} />
+                        <Typography variant="body2" sx={{ color: '#1A005D' }}>
+                          <strong>Feedback Deadline:</strong> {dayjs(finalSubmitDate).format('DD MMM YYYY, hh:mm A')}
+                        </Typography>
+                      </Box>
+                    )}
                 {/* ── Trainee / Trainer Tabs ── */}
                 <Box sx={{ width: '100%', bgcolor: 'background.paper' }}>
                   <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} centered>
@@ -3032,6 +3203,139 @@ const handleConfirmSubmit = useCallback(async () => {
           </DialogActions>
         </Dialog>
 
+
+{/* ── Certificate Management Dialog ── */}
+<Dialog open={certDialogOpen} onClose={() => setCertDialogOpen(false)} maxWidth="md" fullWidth>
+  <DialogTitle sx={{ backgroundColor: '#1A005D', color: 'white', fontWeight: 'bold' }}>
+    🎓 Certificate Management
+    <IconButton onClick={() => setCertDialogOpen(false)} sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}>
+      <CloseIcon />
+    </IconButton>
+  </DialogTitle>
+  <DialogContent sx={{ backgroundColor: '#F4F6F8', pt: 2 }}>                <Box sx={{ mb: 1, p: 1.5, border: '1px dashed #1A005D', borderRadius: 2, backgroundColor: 'white' }}>
+                  <Typography variant="body2" fontWeight="bold" sx={{ mb: 1, color: '#1A005D' }}>
+                    🎓 Send Certificates (filename = Trainee Employee ID, e.g. <code>7115.pdf</code>)
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <input
+                      accept=".pdf"
+                      style={{ display: 'none' }}
+                      id="certificate-bulk-upload"
+                      multiple
+                      type="file"
+                      onChange={handleCertFileSelection}
+                    />
+                    <label htmlFor="certificate-bulk-upload">
+                      <Button variant="contained" component="span" startIcon={<CloudUploadIcon />}
+                        sx={{ backgroundColor: '#1A005D', color: 'white', '&:hover': { backgroundColor: '#08233d' } }}>
+                        Select Certificates
+                      </Button>
+                    </label>
+                    <Button variant="contained" color="success" startIcon={<SendIcon />}
+                      onClick={handleSendCertificates}
+                      disabled={certFiles.length === 0 || certUploading}>
+                      {certUploading ? 'Sending...' : `Send Certificates (${certFiles.length})`}
+                    </Button>
+                  </Box>
+
+                  {certFiles.length > 0 && (
+                    <Box sx={{ mt: 1, maxHeight: 120, overflow: 'auto' }}>
+                      <Typography variant="caption">Selected ({certFiles.length}):</Typography>
+                      <List dense sx={{ p: 0 }}>
+                        {certFiles.map((f, i) => (
+                          <ListItem key={i} sx={{ py: 0.25 }}>
+                            <ListItemText primary={f.name} secondary={`${(f.size / 1024).toFixed(1)} KB`} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+
+                  {certUploading && <LinearProgress sx={{ mt: 1 }} />}
+
+                  {certResult && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" color="success.main" sx={{ display: 'block' }}>
+                        ✅ Sent: {certResult.sent}
+                      </Typography>
+                      {certResult.skipped?.length > 0 && (
+                        <Typography variant="caption" color="error" sx={{ display: 'block' }}>
+                          ⚠️ Skipped: {certResult.skipped.join('; ')}
+                        </Typography>
+                      )}
+                      {certResult.missingCertificates?.length > 0 && (
+                        <Typography variant="caption" color="warning.main" sx={{ display: 'block' }}>
+                          📌 No certificate uploaded for: {certResult.missingCertificates.join(', ')}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                  
+                  {/* ── Certificate Status Table ── */}
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" fontWeight="bold" sx={{ mb: 1, color: '#1A005D' }}>
+                      📋 Certificate Status ({certificateStatusList.length} submitted feedback)
+                    </Typography>
+                    {certStatusLoading ? (
+                      <Box display="flex" justifyContent="center" py={2}><CircularProgress size={20} /></Box>
+                    ) : certificateStatusList.length === 0 ? (
+                      <Typography variant="caption" color="text.secondary">No trainees have submitted feedback yet.</Typography>
+                    ) : (
+                      <TableContainer sx={{ maxHeight: 250, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow sx={{ '& th': { backgroundColor: '#f5f5f5', fontWeight: 'bold', fontSize: '12px' } }}>
+                              <TableCell>Trainee</TableCell>
+                              <TableCell>Feedback Submitted On</TableCell>
+                              <TableCell align="center">Certificate</TableCell>
+                              <TableCell>Sent On</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {certificateStatusList.map((t) => (
+                              <TableRow key={t.trainee_id}>
+                                <TableCell sx={{ fontSize: '12px' }}>
+                                  {t.trainee_name}
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    ID: {t.trainee_id}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell sx={{ fontSize: '12px' }}>
+                                  {t.feedback_form_submition_date
+                                    ? dayjs(t.feedback_form_submition_date).format('DD MMM YYYY, hh:mm A')
+                                    : '—'}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {t.certificate_sent_status === 1 ? (
+                                    <Tooltip title="Certificate sent">
+                                      <CheckCircleIcon color="success" fontSize="small" />
+                                    </Tooltip>
+                                  ) : (
+                                    <Tooltip title="Certificate not sent yet">
+                                      <RadioButtonUncheckedIcon sx={{ color: 'orange' }} fontSize="small" />
+                                    </Tooltip>
+                                  )}
+                                </TableCell>
+                                <TableCell sx={{ fontSize: '12px' }}>
+                                  {t.certificate_sent_date
+                                    ? dayjs(t.certificate_sent_date).format('DD MMM YYYY, hh:mm A')
+                                    : '—'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </Box>
+                </Box>
+</DialogContent>
+  <DialogActions>
+    <Button onClick={() => setCertDialogOpen(false)} sx={{ backgroundColor: '#1A005D', color: 'white', textTransform: 'none' }}>Close</Button>
+  </DialogActions>
+</Dialog>
+
+                
         {/* ── Trainee Feedback Details ── */}
         <Dialog open={openFeedbackDetailsDialog} onClose={() => setOpenFeedbackDetailsDialog(false)} maxWidth="md" fullWidth>
           <DialogTitle sx={{ backgroundColor: '#1A005D', color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem', padding: '12px' }}>Feedback Details</DialogTitle>

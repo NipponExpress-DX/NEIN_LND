@@ -78,7 +78,9 @@ const {
     TraineeUpdateFeedbackFormDetails,
     AssigningFeedbackFormDetailsToTrainer,
     GetAllFeedbackFormDetailsToTrainer,
-    GetTraineeFeedbackStatus
+    GetTraineeFeedbackStatus,
+    CloseSessionAfterAttendance,
+    GetFeedbackDeadlineForSession   
 } = require('../controllers/trainingMaster/feedback_form');
 
 
@@ -328,6 +330,13 @@ router.post('/TraineeFeedbackFormQuestions/GetAllSubmitedOrPendingFeedbackFormDe
 // Route to User(trainee)  pending and submit list feedback  questions particular planning with session
 router.post('/TraineeFeedbackFormQuestions/GetTraineeFeedbackStatus', (req, res) => {
     GetTraineeFeedbackStatus(req, res);  // Pass to the controller
+});
+
+router.post('/FeedbackFormQuestions/closeSessionAfterAttendance', (req, res) => {
+  CloseSessionAfterAttendance(req, res);
+});
+router.post('/FeedbackFormQuestions/getDeadline', (req, res) => {
+  GetFeedbackDeadlineForSession(req, res);
 });
 
 //--------------------To Trainer --------------------------------//

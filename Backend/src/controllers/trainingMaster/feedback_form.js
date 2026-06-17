@@ -187,9 +187,9 @@ exports.AssigningFeedbackFormDetailsToTrainee = async (req, res) => {
 
     const result = await query(
       `UPDATE planing_session_trainee_data
-       SET feedback_form_Assign_by = ?, feedback_form_Assign_final_submit_date = ?,
-           feedback_form_name = ?, feedback_form_question = ?, date_created = NOW()
-       WHERE planing_id = ? AND session_no = ?`,
+      SET feedback_form_Assign_by = ?, feedback_form_Assign_final_submit_date = ?,
+          feedback_form_name = ?, feedback_form_question = ?, date_created = NOW()
+      WHERE planing_id = ? AND session_no = ? AND attendance_status = 1`,
       [feedback_form_Assign, feedback_form_Assign_final_submit_date, feedback_form_name, questionsJson, planing_id, session_no]
     );
     return res.status(200).json({ message: 'Feedback form details successfully updated.', affectedRows: result.affectedRows });
@@ -410,7 +410,39 @@ exports.GetAllSubmitedOrPendingFeedbackFormDetailsCountToTrainee = async (req, r
   }
 };
 
+// ─── Get Feedback Form Deadline for Session ────────────────────────────────
+exports.GetFeedbackDeadlineForSession = async (req, res) => {
+  const { planing_id, session_no } = req.body;
 
+  if (!planing_id || !session_no) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  try {
+    const results = await query(
+      `SELECT feedback_form_Assign_final_submit_date, feedback_form_name
+       FROM planing_session_trainee_data
+       WHERE calDeleteStatus = 0 
+         AND planing_id = ? 
+         AND session_no = ?
+         AND feedback_form_Assign_final_submit_date IS NOT NULL
+       LIMIT 1`,
+      [planing_id, session_no]
+    );
+
+    if (results.length === 0) {
+      return res.status(200).json({ deadline: null, feedback_form_name: null });
+    }
+
+    return res.status(200).json({
+      deadline: results[0].feedback_form_Assign_final_submit_date,
+      feedback_form_name: results[0].feedback_form_name,
+    });
+  } catch (err) {
+    console.error('Database error:', err);
+    return res.status(500).json({ error: 'Database error', details: err.message });
+  }
+};
 // ─── Trainee Feedback Status ───────────────────────────────────────────────
 exports.GetTraineeFeedbackStatus = async (req, res) => {
   const { planing_id, session_no } = req.body;
@@ -498,6 +530,79 @@ exports.GetAllFeedbackFormDetailsToTrainer = async (req, res) => {
     return res.status(200).json({ topics: results });
   } catch (err) {
     console.error('Database error:', err);
+    return res.status(500).json({ error: 'Database error', details: err.message });
+  }
+};
+
+// ─── Close session directly after attendance (no feedback required) ─────────
+exports.CloseSessionAfterAttendance = async (req, res) => {
+  const { planing_id, session_no, emp_id, user_name, user_email } = req.body;
+
+  if (!planing_id || !session_no || !emp_id) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  try {
+    // 1. Check session exists and is in a closeable state
+    const sessions = await query(
+      `SELECT PSstatus FROM planing_sessions 
+       WHERE planing_id = ? AND session_no = ? AND calDeleteStatus = 0`,
+      [planing_id, session_no]
+    );
+
+    if (sessions.length === 0) {
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+
+    const { PSstatus } = sessions[0];
+    const closeableStatuses = ['Attendance Added', 'Training Effectiveness'];
+    
+    if (!closeableStatuses.includes(PSstatus)) {
+      return res.status(400).json({ 
+        error: `Session cannot be closed from status: ${PSstatus}. Must be in Attendance Added or Training Effectiveness.` 
+      });
+    }
+
+    // 2. Close the session
+    await query(
+      `UPDATE planing_sessions 
+       SET PSstatus = 'Session Closed'
+       WHERE planing_id = ? AND session_no = ?`,
+      [planing_id, session_no]
+    );
+
+    // 3. Check if ALL sessions for this training are now closed/cancelled
+    const allSessions = await query(
+      `SELECT PSstatus FROM planing_sessions 
+       WHERE planing_id = ? AND calDeleteStatus = 0`,
+      [planing_id]
+    );
+
+    const allDone = allSessions.every(s =>
+      ['Session Closed', 'Final Submitted', 'Cancelled'].includes(s.PSstatus)
+    );
+
+    if (allDone) {
+      await query(
+        `UPDATE planning_training_table
+        SET Status = 'Final Submitted', 
+            emp_id = ?, user_name = ?, user_email = ?
+        WHERE id = ?`,
+        [emp_id, user_name, user_email, planing_id]
+      );
+      return res.status(200).json({ 
+        message: 'Session closed and training marked as Final Submitted.',
+        trainingFinalized: true 
+      });
+    }
+
+    return res.status(200).json({ 
+      message: 'Session closed successfully.',
+      trainingFinalized: false 
+    });
+
+  } catch (err) {
+    console.error('Error closing session:', err);
     return res.status(500).json({ error: 'Database error', details: err.message });
   }
 };
