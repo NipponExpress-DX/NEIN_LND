@@ -62,9 +62,7 @@
  
 
 
-
 // Load environment variables
-
 require('dotenv').config();
 
 const express = require('express');
@@ -83,8 +81,7 @@ const roleRoutes = require('./src/routes/roleRoute');
 const ListnesRoutes = require('./src/routes/Listners');
 const Reports = require('./src/routes/reports');
 const Dashboard = require('./src/routes/dashboard');
-
-// Cron controller
+const ehsRoutes = require('./src/routes/ehsRoutes');   // ← NEW
 
 // Create Express app
 const app = express();
@@ -96,8 +93,10 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from 'public' folder
-// app.use('/', express.static(path.join(__dirname, 'public')));
 app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
+
+// Serve uploaded EHS photos
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Route mapping
 app.use('/login', loginRoutes);
@@ -108,6 +107,7 @@ app.use('/roleRoutes', roleRoutes);
 app.use('/ListnesRoutes', ListnesRoutes);
 app.use('/reports', Reports);
 app.use('/dashboard', Dashboard);
+app.use('/ehs', ehsRoutes);   // ← NEW
 
 // 404 handler
 app.use((req, res) => {
@@ -121,7 +121,6 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 

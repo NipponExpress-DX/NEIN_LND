@@ -1,0 +1,4 @@
+/* EHSLayout.css — only active while an EHS route is mounted */
+body.ehs-no-header-offset {
+  padding-top: 0 !important;
+}

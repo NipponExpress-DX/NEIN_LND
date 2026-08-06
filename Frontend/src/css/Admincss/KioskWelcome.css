@@ -1,0 +1,518 @@
+/* ============================================================
+   KioskWelcome.css
+   EHS Digital Induction — Welcome Screen
+   ============================================================ */
+
+.kiosk-welcome-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d1b2a 0%, #1A005D 100%);
+  padding: 24px 16px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.kiosk-welcome-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 48px 20px;
+  max-width: none;
+  width: 90%;
+  height: 90vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ── Top bar ── */
+.welcome-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+
+.welcome-org-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+  letter-spacing: 1px;
+}
+
+.welcome-ehs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e8f4fb;
+  color: #185fa5;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 99px;
+}
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #185fa5;
+}
+
+/* ── Hero ── */
+
+.welcome-hero {
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+
+.welcome-icon-ring {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #003d5c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.welcome-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #003d5c;
+  margin: 0 0 6px;
+}
+
+.welcome-subtitle {
+  font-size: 13px;
+  color: #777;
+  line-height: 1.5;
+  margin: 0 auto;
+  max-width: 520px;
+}
+
+.corporate-notice {
+  display: inline-block;
+  margin-top: 14px;
+  background: #eafaf1;
+  color: #1a7a45;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+/* ── Topic cards ── */
+.welcome-topics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.welcome-topic {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+.topic-icon-wrap { font-size: 20px; }
+.topic-label { line-height: 1.3; }
+
+.topic-blue   { background: #e8f4fb; border-color: #c5dff6; color: #185fa5; }
+.topic-green  { background: #eaf3de; border-color: #c5dfa3; color: #3b6d11; }
+.topic-amber  { background: #faeeda; border-color: #f4c57c; color: #854f0b; }
+.topic-red    { background: #fcebeb; border-color: #f0b0b0; color: #a32d2d; }
+
+/* ── Steps strip ── */
+.steps-caption {
+  font-size: 11px;
+  font-weight: 700;
+  color: #185fa5;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px;
+  text-align: center;
+}
+
+.welcome-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f7f8fa;
+  border: 1px solid #e8eaed;
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+}
+
+.welcome-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #003d5c;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-label {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+  margin-top: 3px;
+}
+
+.step-divider {
+  width: 24px;
+  height: 2px;
+  background: #d0d5dd;
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+/* ── Time estimate ── */
+.welcome-time {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin: 0 0 22px;
+}
+
+/* ── Buttons ── */
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-begin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-begin:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(231, 76, 60, 0.35);
+}
+
+.btn-begin:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-returning {
+  width: 100%;
+  padding: 11px;
+  background: #f0f4ff;
+  color: #185fa5;
+  border: 1px solid #c5dff6;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.btn-returning:hover:not(:disabled) { background: #e0edfb; }
+
+.btn-back {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.btn-back:hover:not(:disabled) {
+  background: #f5f5f5;
+  color: #555;
+}
+
+.btn-back:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ── */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-path {
+  stroke: white;
+  stroke-linecap: round;
+  animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes dash {
+  0%   { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+  50%  { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+  100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  .kiosk-welcome-card {
+    padding: 24px 20px 20px;
+    border-radius: 12px;
+  }
+
+  .welcome-icon-ring {
+    width: 60px;
+    height: 60px;
+  }
+
+  .welcome-title {
+    font-size: 20px;
+  }
+
+  .welcome-topics {
+    grid-template-columns: 1fr;
+  }
+
+  .step-label {
+    font-size: 10px;
+  }
+
+  .btn-begin {
+  padding: 13px;
+  font-size: 15px;
+}
+}
+/* ============================================================
+   ADD THIS TO KioskWelcome.css
+   Styles for clickable topic cards + topic detail modal
+   ============================================================ */
+
+.topics-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin: 0 0 10px;
+  letter-spacing: 0.02em;
+}
+
+/* Make the existing topic pills feel tappable */
+.welcome-topic-btn {
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  position: relative;
+}
+
+.welcome-topic-btn:hover,
+.welcome-topic-btn:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.welcome-topic-btn:active {
+  transform: translateY(0);
+}
+
+.topic-chevron {
+  margin-left: auto;
+  opacity: 0.4;
+  font-size: 1.1rem;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.welcome-topic-btn:hover .topic-chevron {
+  opacity: 0.9;
+  transform: translateX(2px);
+}
+
+/* ---------------- Modal overlay ---------------- */
+.topic-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 27, 42, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+  animation: topicFadeIn 0.18s ease-out;
+}
+
+@keyframes topicFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------------- Modal card ---------------- */
+.topic-modal {
+  --accent: #3b82f6;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #e8eaed;
+  border-top: 4px solid var(--accent);
+  border-radius: 16px;
+  padding: 28px 26px 24px;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  animation: topicSlideUp 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes topicSlideUp {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.topic-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f2f4f7;
+  color: #888;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.topic-modal-close:hover {
+  background: #e5e8ee;
+  color: #333;
+}
+
+.topic-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding-right: 20px;
+}
+
+.topic-modal-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.topic-modal-title {
+  color: #003d5c;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.topic-modal-summary {
+  color: #777;
+  font-size: 0.86rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.topic-modal-list {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topic-modal-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #444;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.topic-modal-bullet {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 7px;
+}
+
+.topic-modal-got-it {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.topic-modal-got-it:hover {
+  filter: brightness(1.1);
+}
+
+.topic-modal-got-it:active {
+  transform: scale(0.98);
+}

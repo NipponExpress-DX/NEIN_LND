@@ -1,0 +1,338 @@
+.photo-capture-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d1b2a 0%, #1A005D 100%);
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.photo-content {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 1000px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.photo-content h2 {
+  color: #003d5c;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.photo-content > p {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.error-message {
+  background: #fadbd8;
+  border-left: 4px solid #e74c3c;
+  color: #c0392b;
+  padding: 12px 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.capture-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.camera-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.camera-display {
+  background: #f5f5f5;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+.camera-placeholder {
+  text-align: center;
+  color: white;
+  font-size: 32px;
+}
+
+.camera-placeholder p:first-child {
+  font-size: 36px;
+  margin: 0;
+}
+
+.camera-placeholder p:last-child {
+  font-size: 12px;
+  margin-top: 8px;
+  opacity: 0.8;
+}
+
+.video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.capture-count {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.camera-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.control-button {
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.control-button.primary {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  grid-column: 1 / -1;
+}
+
+.control-button.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(231, 76, 60, 0.3);
+}
+
+.control-button.secondary {
+  background: #ecf0f1;
+  color: #003d5c;
+}
+
+.control-button.secondary:hover:not(:disabled) {
+  background: #d5dbdf;
+}
+
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.photos-gallery {
+  display: flex;
+  flex-direction: column;
+}
+
+.photos-gallery h3 {
+  color: #003d5c;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.photo-item {
+  position: relative;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  aspect-ratio: 1;
+  background: #f5f5f5;
+}
+
+.photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-item.selected {
+  border-color: #27ae60;
+  box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.2);
+}
+
+.photo-number {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 11px;
+  padding: 4px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.photo-item:hover .delete-button {
+  opacity: 1;
+}
+
+.delete-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background: #e74c3c;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-button:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
+.no-photos {
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 20px;
+}
+
+.selection-info {
+  background: #eafaf1;
+  border-left: 4px solid #27ae60;
+  padding: 12px 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #27ae60;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.submit-button,
+.back-button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submit-button {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.back-button {
+  background: #ecf0f1;
+  color: #003d5c;
+}
+
+.back-button:hover:not(:disabled) {
+  background: #d5dbdf;
+  transform: translateX(-3px);
+}
+
+.back-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+  .capture-section {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .photo-content {
+    padding: 25px;
+  }
+
+  .photo-content h2 {
+    font-size: 24px;
+  }
+
+  .camera-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .control-button.primary {
+    grid-column: auto;
+  }
+
+  .photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .submit-button,
+  .back-button {
+    padding: 10px;
+    font-size: 14px;
+  }
+}

@@ -56,6 +56,7 @@ function Agenda() {
   const training = location.state?.training || {};
   const {
     id = "Default ID",
+    emp_id: trainingCreatorEmpId = null,
     topic = "Default Topic",
     branch = "Default Branch",
     department = "Default Department",
@@ -198,6 +199,8 @@ function Agenda() {
 
   const prevBranches = useRef([]);
   const prevDepartments = useRef([]);
+  const fetchAllCoordsRanRef = useRef(false);
+
 
   // ─── Derived ─────────────────────────────────────────────────────────────────
   const emp_id = loggedInUser?.emp_id || "";
@@ -231,6 +234,26 @@ function Agenda() {
     ) || null;
   }, [loggedInUser?.emp_id, mappedCoorSubcoor]);
 
+// ── True when the logged-in user is the training creator (emp_id matches planning_training_table.emp_id)
+const isAdminOrCreator = useMemo(() => {
+  if (!loggedInUser?.emp_id) return false;
+
+  // ── Super admin / admin role check ──────────────────────────────────────
+  // userRole "5" = Super Admin
+  const adminRoleIds = ["5"];
+  if (adminRoleIds.includes(String(loggedInUser?.userRole))) return true;
+
+  // ── Training creator check ───────────────────────────────────────────────
+  const creatorEmpId =
+    training?.emp_id ||
+    sessionData?.[0]?.emp_id ||
+    null;
+  return creatorEmpId
+    ? String(loggedInUser.emp_id) === String(creatorEmpId)
+    : false;
+}, [loggedInUser?.emp_id, loggedInUser?.userRole, training?.emp_id, sessionData]);
+
+
   const draftedIds = useMemo(() => new Set(draftTrainees.map((t) => t.emp_id)), [draftTrainees]);
   const notDraftedTrainees = useMemo(
     () => filteredTrainees.filter((t) => !draftedIds.has(t.emp_id)),
@@ -260,7 +283,46 @@ function Agenda() {
     2: <School style={{ fontSize: "30px" }} />,
     3: <School style={{ fontSize: "30px" }} />,
   };
+  // ── Admin/creator: populate session dropdown from sessionData directly
 
+useEffect(() => {
+  if (!isAdminOrCreator) return;
+  if (!sessionData?.length) return;
+
+  const allSessions = sessionData.map((s) => ({
+    session_no: s.session_no,
+    branch:     branches.join(", "),
+    department: departments.join(", "),
+  }));
+  setSessionOptionsDropdown(allSessions);
+
+ 
+  if (allSessions.length >= 1) {
+    setSelectedSession((prev) => {
+      // Only update if not already set to a valid session in this dropdown
+      const alreadyValid = prev && allSessions.some(
+        (s) => String(s.session_no) === String(prev?.session_no)
+      );
+      return alreadyValid ? prev : allSessions[0];
+    });
+    setSelectedSessionNo((prev) =>
+      prev && allSessions.some((s) => String(s.session_no) === String(prev))
+        ? prev
+        : allSessions[0].session_no
+    );
+  }
+
+  // ── Set available branches/departments for admin from training record ──
+  // (autoCoordinator effect is skipped for admin, so we do it here)
+  const brs = branches.filter(Boolean);
+  const dpts = departments.filter(Boolean);
+  if (brs.length) setAvailableBranches(brs);
+  if (dpts.length) setAvailableDepartments(dpts);
+
+  // ── Fetch trainees immediately ──
+  fetchTrainees();
+
+}, [isAdminOrCreator, sessionData]); // eslint-disable-line
   // ─── API helpers ──────────────────────────────────────────────────────────────
   const fetchSessions = async () => {
     try {
@@ -592,11 +654,18 @@ function Agenda() {
         // Fetch all trainees immediately with no filters
         fetchTrainees();
       } else if (unique.length === 0) {
-        setSelectedSession(null);
-        setSelectedSessionNo(null);
+       const creatorEmpId = training?.emp_id || null;
+        const callerIsCreator = creatorEmpId
+          ? String(user.emp_id) === String(creatorEmpId)
+          : false;
+        if (!callerIsCreator) {
+          setSelectedSession(null);
+          setSelectedSessionNo(null);
+        }
+       
       }
       return merged;
-    } catch (e) { console.error(e); setSessionOptionsDropdown([]); return []; }
+        } catch (e) { console.error(e); return []; }
   }, [fetchTrainees]);
 
   const fetchCoordinatorView = async (planningId) => {
@@ -667,22 +736,27 @@ function Agenda() {
       if (!coords?.length) return;
 
       const loggedCoord = coords.find(
-        (c) => String(c.coordinator_emp_id) === String(loggedInUser?.emp_id)
-      );
-      if (!loggedCoord) {
-        const subRes = await fetch(`${API_BASE_URL}/planning-route/MappingSubCoordinator/PlanningMainTableList`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planing_id: pid }),
-        });
-        if (subRes.ok) {
-          const subData = await subRes.json();
-          const subs = subData.coordinators || [];
-          const loggedSub = subs.find((c) =>
-            c.sub_coordinator_emp_ids?.split(",").map((x) => x.trim()).includes(String(loggedInUser?.emp_id))
-          );
-          if (!loggedSub) return;
+          (c) => String(c.coordinator_emp_id) === String(loggedInUser?.emp_id)
+        );
+        if (!loggedCoord) {
+          // ── Admin bypass: skip the coordinator/sub-coordinator check ──
+          if (isAdminOrCreator) {
+            // fall through — admin can always fetch draft list
+          } else {
+            const subRes = await fetch(`${API_BASE_URL}/planning-route/MappingSubCoordinator/PlanningMainTableList`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ planing_id: pid }),
+            });
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              const subs = subData.coordinators || [];
+              const loggedSub = subs.find((c) =>
+                c.sub_coordinator_emp_ids?.split(",").map((x) => x.trim()).includes(String(loggedInUser?.emp_id))
+              );
+              if (!loggedSub) return;   // ← only non-admins get blocked here
+            }
+          }
         }
-      }
 
       const draftPayload = { planing_id: pid };
       const sNo = Number(selectedSessionNo || 0);
@@ -1037,7 +1111,7 @@ function Agenda() {
     setEditingIndex(null);
     setEditingRowIndex(null);
     setSelectedId(null);
-    setSelectedSession(null);
+   
     setSelectedTrainingId(null);
     setCoordinatorType("Multiple");
     setSelectedBranches([]);
@@ -1066,8 +1140,24 @@ function Agenda() {
       });
       const coordData = await coordRes.json();
       if (!coordData.success || !coordData.data?.length) { setSnackbar({ open: true, message: "No coordinators found.", severity: "warning" }); return; }
-      const coordinator = coordData.data.find((c) => c.coordinator_emp_id == user.emp_id);
-      if (!coordinator) { setSnackbar({ open: true, message: "Access Denied: Not a coordinator.", severity: "error" }); return; }
+      let coordinator = coordData.data.find((c) => c.coordinator_emp_id == user.emp_id);
+
+        if (!coordinator && isAdminOrCreator) {
+          // Admin: use the first available coordinator record as the host,
+          // but override identity fields with admin's own emp_id/name/email
+          const hostCoord = coordData.data[0];
+          coordinator = {
+            ...hostCoord,
+            coordinator_emp_id: user.emp_id,
+            coordinator_name:   user.empname || user.user_name || "",
+            coordinator_email:  user.user_email || "",
+          };
+        }
+
+        if (!coordinator) {
+          setSnackbar({ open: true, message: "Access Denied: Not a coordinator.", severity: "error" });
+          return;
+        }
       const selBranch = chosenBranch || coordinator.branch;
       const selDept = chosenDepartment || coordinator.department;
       const addRes = await fetch(`${API_BASE_URL}/planning-route/MappingSubCoordinator/add`, {
@@ -1118,6 +1208,7 @@ function Agenda() {
         autoCoordinator?.branch ||
         selectedSession?.branch ||
         traineeBranch ||
+        (isAdminOrCreator ? branches.join(", ") : "") ||   // ← admin fallback: training-level branches
         (typeof selectedbranch === "string" ? selectedbranch : "")
       ).toUpperCase().trim();
 
@@ -1126,6 +1217,7 @@ function Agenda() {
         autoCoordinator?.department ||
         selectedSession?.department ||
         traineedepartment ||
+        (isAdminOrCreator ? departments.join(", ") : "") || // ← admin fallback: training-level departments
         (typeof selecteddepartment === "string" ? selecteddepartment : "")
       ).toUpperCase().trim();
 
@@ -1245,7 +1337,16 @@ const handleMapTrainees = async () => {
         if (loggedInSubCoordinator) coordType = "sub-coordinator";
       }
     }
- 
+    if (!loggedInCoordinator && !loggedInSubCoordinator) {
+      if (!isAdminOrCreator) {
+        handleOpenSnackbar(
+          "You are not mapped as a coordinator or sub-coordinator for this training.",
+          "error"
+        );
+        return;
+      }
+      // Admin proceeds — identity is set from loggedInUser below
+    }
     // ── Build trainee map ──────────────────────────────────────────────────────
     const finalMap = traineesToSubmit.reduce((acc, t) => {
       acc[t.emp_id] = [
@@ -1285,20 +1386,25 @@ const handleMapTrainees = async () => {
       const idx2 = ids.findIndex((id) => id.trim() === String(loggedInUser?.emp_id));
       cEmpId = idx2 >= 0 ? loggedInUser.emp_id : ids[0] || cEmpId;
       cName = idx2 >= 0 ? names[idx2] || "" : names[0] || cName;
+    } else if (isAdminOrCreator) {
+      // Admin acts as coordinator — use their own identity
+      cEmpId = loggedInUser?.emp_id || "";
+      cName  = loggedInUser?.empname || "";
     }
  
     const resolvedBranch =
-      loggedInCoordinator?.branch ||
-      loggedInSubCoordinator?.branch ||
-      selectedCoordinator?.branch ||
-      autoCoordinator?.branch ||
-      "";
-    const resolvedDept =
-      loggedInCoordinator?.department ||
-      loggedInSubCoordinator?.dept ||
-      selectedCoordinator?.department ||
-      autoCoordinator?.department ||
-      "";
+        loggedInCoordinator?.branch ||
+        loggedInSubCoordinator?.branch ||
+        selectedCoordinator?.branch ||
+        autoCoordinator?.branch ||
+        (isAdminOrCreator ? branches.join(", ") : "") || ""; // ← admin fallback
+
+      const resolvedDept =
+        loggedInCoordinator?.department ||
+        loggedInSubCoordinator?.dept ||
+        selectedCoordinator?.department ||
+        autoCoordinator?.department ||
+        (isAdminOrCreator ? departments.join(", ") : "") || ""; // ← admin fallback
  
     const payload = {
       planing_id: pid,
@@ -1677,7 +1783,7 @@ const handleMapTrainees = async () => {
   useEffect(() => {
     if (sessionData.length > 0 && selectedSession === null) {
       const first = sessionData[0];
-      setSelectedSession(0);
+      
       setSessions((prev) => ({ ...prev, planing_id: first.planing_id, session_no: first.session_no }));
       setSelectedTrainingId(first.planing_id);
       setSelectedSessionNo(first.session_no);
@@ -1711,9 +1817,24 @@ useEffect(() => {
   }, [chosenBranch, chosenDepartment, mappedCandidates, availableBranch, loggedInUser, filterSubCoordinators]);
 
   useEffect(() => {
-    if (!loggedInUser || !sessions.planing_id) return;
-    fetchSubCoordinatorsAndFilter(sessions.planing_id, sessions.session_no, loggedInUser);
-  }, [sessions.planing_id, sessions.session_no, loggedInUser, fetchSubCoordinatorsAndFilter]);
+  // ── Guard: need either a mapped session (coordinator) OR admin identity ──
+  if (!loggedInUser) return;
+  if (!sessions.planing_id && !isAdminOrCreator) return;  
+
+  if (isAdminOrCreator) {
+    fetch(`${API_BASE_URL}/login/activeEmplList1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
+      .then((r) => r.json())
+      .then((data) => setFilteredCandidates(data.employees || []))
+      .catch(console.error);
+    return;
+  }
+
+  fetchSubCoordinatorsAndFilter(sessions.planing_id, sessions.session_no, loggedInUser);
+}, [sessions.planing_id, sessions.session_no, loggedInUser, isAdminOrCreator, fetchSubCoordinatorsAndFilter]);
 
   useEffect(() => { fetchSubCoordinators(); }, [trainingData.id, loggedInUser]); // eslint-disable-line
 
@@ -1756,20 +1877,22 @@ useEffect(() => {
     if (trainingData.id && loggedInUser) fetchCoordinatorDetails(trainingData.id, loggedInUser);
   }, [trainingData.id, loggedInUser, fetchCoordinatorDetails]);
 
-  useEffect(() => {
-    if (trainingData?.id && loggedInUser?.emp_id) fetchAllCoordinators(trainingData.id, loggedInUser);
-  }, [trainingData?.id, loggedInUser?.emp_id, fetchAllCoordinators]);
+// ── Reset ref whenever training changes (must be declared BEFORE the guard effect) ──
+useEffect(() => {
+  fetchAllCoordsRanRef.current = false;
+}, [trainingData?.id]);
 
-  useEffect(() => {
-    if (trainingData.id && loggedInUser?.emp_id) fetchSubCoordinatorsForLoggedInCoordinator(); // eslint-disable-line
-  }, [trainingData.id, loggedInUser]);
+useEffect(() => {
+  if (isAdminOrCreator) return;
+  if (!trainingData?.id || !loggedInUser?.emp_id) return;
+  if (fetchAllCoordsRanRef.current) return;
+  fetchAllCoordsRanRef.current = true;
+  fetchAllCoordinators(trainingData.id, loggedInUser);
+}, [trainingData?.id, loggedInUser?.emp_id, fetchAllCoordinators, isAdminOrCreator]);
 
-//  useEffect(() => {
-//   const pid = selectedTrainingId || trainingData?.id;
-//   if (pid) {
-//     setIsSubmitted(localStorage.getItem(`isSubmitted_${pid}`) === "true");
-//   }
-// }, [selectedTrainingId, trainingData?.id]);
+useEffect(() => {
+  if (trainingData.id && loggedInUser?.emp_id) fetchSubCoordinatorsForLoggedInCoordinator();
+}, [trainingData.id, loggedInUser]);
 
 useEffect(() => {
   const pid = selectedTrainingId || trainingData?.id;
@@ -1827,26 +1950,23 @@ useEffect(() => {
   }, [userDetails, trainingId]);
 
   useEffect(() => {
-  if (!userDetails?.emp_id || !trainingData?.id) return;
+    if (!userDetails?.emp_id || !trainingData?.id) return;
 
-  // ── If status is already known from props, trust it immediately ─────────
-  const knownScheduled = [
-    "Training Scheduled",
-    "Training Conducted",
-    "Feedback Assigned",
-    "Final Submitted",
-    "Attendance Added",      // ← add any other post-schedule statuses you use
-  ].includes(trainingData?.status);
+    const knownScheduled = [
+      "Training Scheduled", "Training Conducted",
+      "Feedback Assigned", "Final Submitted", "Attendance Added",
+    ].includes(trainingData?.status);
+
 
   if (knownScheduled) {
     setIsThirdStepVisible(true);
     setIsSubmitted(true);
-    if (trainingData?.id) {
-      localStorage.setItem(`isSubmitted_${trainingData.id}`, "true");
-    }
-    return;  // ← skip the async check entirely; we already know
+    if (trainingData?.id) localStorage.setItem(`isSubmitted_${trainingData.id}`, "true");
+    return;
+  }if (isAdminOrCreator) {
+    setIsThirdStepVisible(true);
+    return;
   }
-
   // Only reach here when status is "Training Created" (not yet scheduled)
   setIsThirdStepVisible(false);
 
@@ -1901,10 +2021,11 @@ useEffect(() => {
   };
 
   checkVisibility();
-}, [userDetails?.emp_id, trainingData.id, trainingData?.status]);
+}, [userDetails?.emp_id, trainingData.id, trainingData?.status, isAdminOrCreator]);
 
   // ── autoCoordinator effect — load all trainees immediately; branch/dept are optional filters ──
   useEffect(() => {
+      if (isAdminOrCreator) return; 
     if (!autoCoordinator) return;
     if (selectedCoordinator?.coordinator_emp_id === autoCoordinator.coordinator_emp_id) return;
     setSelectedCoordinator(autoCoordinator);
@@ -1924,7 +2045,7 @@ useEffect(() => {
     // Fetch all trainees with no filters — user can optionally narrow down
       fetchTrainees();
 
-  }, [autoCoordinator, fetchTrainees]);
+  }, [autoCoordinator, fetchTrainees, isAdminOrCreator]);
 
   useEffect(() => {
     fetchDraftList(); // eslint-disable-line
@@ -2394,9 +2515,24 @@ useEffect(() => {
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Button variant="contained" color="primary" onClick={() => {
-                          const loggedSession = mappedCoordinators.find((c) => c.emp_id === loggedInUser.emp_id && c.role_type === "coordinator")?.session_no;
-                          if (!loggedSession) { setSnackbar({ open: true, message: "No mapped session found.", severity: "error" }); return; }
-                          addSubCoordinator(planingId || trainingData.id, loggedSession, loggedInUser, { emp_id: chosenSubCoordinator, full_name: subCoordinatorName, email: subCoordinatorEmail });
+                            const loggedSession = mappedCoordinators.find(
+                              (c) => c.emp_id === loggedInUser.emp_id && c.role_type === "coordinator"
+                            )?.session_no;
+                            const resolvedSession =
+                              loggedSession ||
+                              (isAdminOrCreator
+                                ? selectedSessionNo || sessionData?.[0]?.session_no
+                                : null);
+                           if (!resolvedSession) {
+                                  setSnackbar({ open: true, message: "No mapped session found.", severity: "error" });
+                                  return;
+                                }
+                         addSubCoordinator(
+                                planingId || trainingData.id,
+                                resolvedSession,
+                                loggedInUser,
+                                { emp_id: chosenSubCoordinator, full_name: subCoordinatorName, email: subCoordinatorEmail }
+                              );
                         }}>Add Sub-Coordinator</Button>
                       </Grid>
                     </Grid>
@@ -2475,9 +2611,10 @@ useEffect(() => {
                     {/* Session dropdown */}
                     <Grid item xs={12} sm={6}>
                       <Autocomplete options={sessionOptionsDropdown || []}
-                        getOptionLabel={(o) => o?.session_no ? `Session ${o.session_no}` : "Unknown Session"}
-                        value={selectedSession || null}
-                        onChange={(_, v) => {
+                          getOptionLabel={(o) => o?.session_no ? `Session ${o.session_no}` : "Unknown Session"}
+                          isOptionEqualToValue={(o, v) => String(o?.session_no) === String(v?.session_no)}
+                          value={selectedSession || null}
+                          onChange={(_, v) => {
                           if (v) {
                             setSelectedSession(v);
                             setSelectedSessionNo(v.session_no);
@@ -2503,11 +2640,16 @@ useEffect(() => {
                           ? `${autoCoordinator.coordinator_name} (${autoCoordinator.coordinator_emp_id})`
                           : selectedCoordinator
                             ? `${selectedCoordinator.coordinator_name} (${selectedCoordinator.coordinator_emp_id})`
-                            : "Not assigned"}
+                            : isAdminOrCreator
+                              ? `${loggedInUser?.empname || ""} (${loggedInUser?.emp_id || ""}) — Creator`
+                              : "Not assigned"}
                         fullWidth size="small" variant="outlined" InputProps={{ readOnly: true }}
                         InputLabelProps={{ shrink: true, sx: { color: "#8EC400", "&.Mui-focused": { color: "#8EC400" } } }}
                         sx={{ "& .MuiOutlinedInput-root": { backgroundColor: "#f5f5f5" } }}
-                        helperText="Auto-assigned based on your login"
+                        helperText={
+                          isAdminOrCreator
+                            ? "Acting as training creator — full coordinator access"
+                            : "Auto-assigned based on your login"}
                       />
                     </Grid>
 
@@ -2749,7 +2891,10 @@ useEffect(() => {
                                           )
                                           .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                       .map((trainee, idx) => {
-                                        const canDelete = mappedCoordinators?.some((c) => trainee.session_no === c.session_no || (c.session_no1 && trainee.session_no === c.session_no1));
+                                       const canDelete = isAdminOrCreator || mappedCoordinators?.some(
+                                              (c) => trainee.session_no === c.session_no || 
+                                                    (c.session_no1 && trainee.session_no === c.session_no1)
+                                            );
                                         return (
                                           <TableRow key={trainee.emp_id} hover>
                                             <TableCell>{idx + 1 + page * rowsPerPage}</TableCell>
@@ -3103,9 +3248,14 @@ useEffect(() => {
                                     <TableCell>{trainee.emp_id}</TableCell><TableCell>{trainee.department}</TableCell>
                                     <TableCell>{trainee.branch_name || "N/A"}</TableCell>
                                     <TableCell align="center">
-                                      {mappedCoordinators.some((c) => trainee.session_no === c.session_no || (c.session_no1 && trainee.session_no === c.session_no1)) && (
-                                        <IconButton size="small" onClick={() => handleDeleteTrainee(planingId || trainingData.id, trainee.emp_id)} sx={{ color: "#E53E3E" }}><DeleteIcon /></IconButton>
-                                      )}
+                                      {(isAdminOrCreator || mappedCoordinators.some(
+                                          (c) => trainee.session_no === c.session_no ||
+                                                (c.session_no1 && trainee.session_no === c.session_no1)
+                                        )) && (
+                                          <IconButton size="small" onClick={() => handleDeleteTrainee(planingId || trainingData.id, trainee.emp_id)} sx={{ color: "#E53E3E" }}>
+                                            <DeleteIcon />
+                                          </IconButton>
+                                        )}
                                     </TableCell>
                                   </TableRow>
                                 )) : (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import "../../../css/Admincss/Login.css";
 
@@ -9,13 +9,19 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-    const EXTERNAL_LOGOUT_URL = "https://neinsoft.nittsu.co.in:8185/NEIN/";
-
+  const EXTERNAL_LOGOUT_URL = "https://neinsoft.nittsu.co.in:8185/NEIN/";
 
   useEffect(() => {
+    // Carry the redirect intent even if the user is bounced straight
+    // through because they already have a valid session.
+    if (searchParams.get("redirect") === "ehs-admin") {
+      sessionStorage.setItem("postLoginRedirect", "ehs-admin");
+    }
+
     if (isSessionValid()) {
-      navigate("/admindashboard/dashboardcontent");
+      navigate("/pathselection", { replace: true });
     }
     
     return () => {
@@ -24,7 +30,7 @@ const Login = () => {
         clearInterval(parseInt(intervalId));
       }
     };
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -38,7 +44,6 @@ const Login = () => {
       console.log(`${API_BASE_URL}/login/getAllData`);
 
       const response = await axios.post(`${API_BASE_URL}/login/getAllData`, {
-        
         userid: username.trim(),
         password: password.trim(),
       }, {
@@ -63,6 +68,7 @@ const Login = () => {
           branch_id: data.userDetails.branch_id,
           userRole: data.userRole,
           department_id: data.userDetails.department_id,
+          loginType: "corporate", // Mark as corporate login
           expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour expiration
         };
 
@@ -82,7 +88,8 @@ const Login = () => {
         setupSessionTimeout(60 * 60 * 1000); // 1 hour
         setupSessionCheckInterval();
 
-        navigate("/admindashboard/dashboard", { state: { username } });
+        // Redirect to path selection instead of dashboard
+        navigate("/pathselection", { state: { username } });
       } else {
         setError(data.message || "Invalid credentials");
       }
@@ -150,7 +157,7 @@ const Login = () => {
         }
       }
       clearSession();
-window.location.href = `${EXTERNAL_LOGOUT_URL}?sessionExpired=true`;
+      window.location.href = `${EXTERNAL_LOGOUT_URL}?sessionExpired=true`;
     }, duration);
   };
   
@@ -179,7 +186,7 @@ window.location.href = `${EXTERNAL_LOGOUT_URL}?sessionExpired=true`;
             }
           }
           clearSession();
-window.location.href = `${EXTERNAL_LOGOUT_URL}?sessionExpired=true`;
+          window.location.href = `${EXTERNAL_LOGOUT_URL}?sessionExpired=true`;
         }
       }
     }, checkInterval);
@@ -226,7 +233,6 @@ window.location.href = `${EXTERNAL_LOGOUT_URL}?sessionExpired=true`;
               "Login"
             )}
           </button>
-
         </form>
       </div>
     </div>

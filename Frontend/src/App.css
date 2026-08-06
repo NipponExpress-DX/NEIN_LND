@@ -1,7 +1,13 @@
 .App {
   text-align: center;
 }
+.portal-mode {
+  padding-top: 80px;
+}
 
+.kiosk-mode {
+  padding-top: 0;
+}
 .App-logo {
   height: 40vmin;
   pointer-events: none;

@@ -300,6 +300,604 @@ const LoadingOverlay = ({ open }) => (
 );
 
 
+const FiltersUser = () => <div />;
+ 
+const Filters = React.memo(function Filters({
+  branchMaster,
+  departmentMaster,
+  multifilters,
+  filterOptions,
+  filters,
+  topTab,
+  isAdmin,
+  handleMultiSelectChange,
+  handleAddModalOpen,
+  setFilters,
+  setStatusFilter,
+  setPage,
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+      }}
+    >
+      {/* Branch Filter */}
+      <Autocomplete
+        multiple
+        size="small"
+        sx={{ minWidth: "180px", flexGrow: 1 }}
+        options={[
+          { branch_id: "all", branch_name: "PAN INDIA" },
+          ...branchMaster.filter((b) => b.branch_id !== "all"),
+        ]}
+        value={
+          Array.isArray(multifilters.branch) &&
+          multifilters.branch.length === branchMaster.length - 1
+            ? [{ branch_id: "all", branch_name: "PAN INDIA" }]
+            : multifilters.branch || []
+        }
+        onChange={(e, newVals) => {
+          if (newVals.some((b) => b.branch_id === "all")) {
+            handleMultiSelectChange("branch", [
+              { branch_id: "all", branch_name: "PAN INDIA" },
+            ]);
+          } else {
+            const filtered = newVals.filter((b) => b.branch_id !== "all");
+            handleMultiSelectChange(
+              "branch",
+              filtered.length === branchMaster.length - 1
+                ? [{ branch_id: "all", branch_name: "PAN INDIA" }]
+                : filtered
+            );
+          }
+        }}
+        disableCloseOnSelect
+        getOptionLabel={(o) => o?.branch_name || ""}
+        renderOption={(props, option, { selected }) => (
+          <li {...props}>
+            <Checkbox checked={selected} />
+            {option.branch_name}
+          </li>
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Branch"
+            InputLabelProps={{
+              shrink: Boolean(multifilters.branch.length),
+            }}
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <Typography
+                  variant="body2"
+                  noWrap
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: "180px",
+                    fontSize: "12px",
+                  }}
+                >
+                  {Array.isArray(multifilters.branch) &&
+                  multifilters.branch.length > 0
+                    ? multifilters.branch.some((b) => b.branch_id === "all")
+                      ? "PAN INDIA"
+                      : multifilters.branch.length === 1
+                      ? multifilters.branch[0]?.branch_name
+                      : `${multifilters.branch[0]?.branch_name} (+${
+                          multifilters.branch.length - 1
+                        } More)`
+                    : ""}
+                </Typography>
+              ),
+            }}
+          />
+        )}
+      />
+ 
+      {/* Department Filter */}
+      <Autocomplete
+        multiple
+        size="small"
+        sx={{ minWidth: "180px", flexGrow: 1 }}
+        options={[
+          { department_id: "all", department_name: "All Departments" },
+          ...departmentMaster.filter((d) => d.department_id !== "all"),
+        ]}
+        value={
+          Array.isArray(multifilters.department) &&
+          multifilters.department.length === departmentMaster.length - 1
+            ? [{ department_id: "all", department_name: "All Departments" }]
+            : multifilters.department || []
+        }
+        onChange={(e, newVals) => {
+          if (newVals.some((d) => d.department_id === "all")) {
+            handleMultiSelectChange("department", [
+              { department_id: "all", department_name: "All Departments" },
+            ]);
+          } else {
+            const filtered = newVals.filter((d) => d.department_id !== "all");
+            handleMultiSelectChange(
+              "department",
+              filtered.length === departmentMaster.length - 1
+                ? [{ department_id: "all", department_name: "All Departments" }]
+                : filtered
+            );
+          }
+        }}
+        disableCloseOnSelect
+        getOptionLabel={(o) => o.department_name || ""}
+        renderOption={(props, option, { selected }) => (
+          <li {...props}>
+            <Checkbox checked={selected} />
+            {option.department_name}
+          </li>
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Department"
+            InputLabelProps={{
+              shrink: Boolean(multifilters.department.length),
+            }}
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <Typography
+                  variant="body2"
+                  noWrap
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: "180px",
+                    fontSize: "12px",
+                  }}
+                >
+                  {Array.isArray(multifilters.department) &&
+                  multifilters.department.length > 0
+                    ? multifilters.department.some(
+                        (d) => d.department_id === "all"
+                      )
+                      ? "All Departments"
+                      : multifilters.department.length === 1
+                      ? multifilters.department[0]?.department_name
+                      : `${multifilters.department[0]?.department_name} (+${
+                          multifilters.department.length - 1
+                        } More)`
+                    : ""}
+                </Typography>
+              ),
+            }}
+          />
+        )}
+      />
+ 
+      {/* Status Filter */}
+      <Autocomplete
+        size="small"
+        sx={{ minWidth: "180px", flexGrow: 1 }}
+        options={[
+          ...new Set(
+            filterOptions.statuses.includes("N/A")
+              ? filterOptions.statuses.map((s) =>
+                  s === "N/A" ? "Feedback Assigned" : s
+                )
+              : filterOptions.statuses
+          ),
+        ].sort((a, b) => a.localeCompare(b))}
+        value={
+          Array.isArray(filters.status)
+            ? filters.status[0] === "N/A"
+              ? "Feedback Assigned"
+              : filters.status[0]
+            : filters.status === "N/A"
+            ? "Feedback Assigned"
+            : filters.status
+        }
+        onChange={(e, v) => {
+          const val = v === "Feedback Assigned" ? "N/A" : v;
+          setFilters((prev) => ({ ...prev, status: val }));
+          setStatusFilter(val ? [val] : []);
+          setPage(0);
+        }}
+        renderInput={(params) => <TextField {...params} label="Status" />}
+      />
+ 
+      {isAdmin && topTab === 1 && (
+        <Tooltip
+          title="Add New Training"
+          placement="top"
+          componentsProps={{
+            tooltip: { sx: { backgroundColor: "#1A005D", color: "white" } },
+          }}
+          arrow
+        >
+          <IconButton
+            onClick={handleAddModalOpen}
+            style={{ background: "#1A005D", color: "white" }}
+          >
+            <AddIcon style={{ color: "white" }} />
+          </IconButton>
+        </Tooltip>
+      )}
+    </div>
+  );
+});
+ 
+const TrainingRow = React.memo(function TrainingRow({
+  training,
+  index,
+  // expansion
+  expanded,
+  onExpandClick,
+  // sessions
+  sessionsData,
+  // masters for display
+  branchMaster,
+  departmentMaster,
+  // render helpers
+  renderMilestones,
+  renderSessionMilestones,
+  renderSessionActionItems,
+  // actions
+  hasAccess,
+  topTab,
+  nestedTab,
+  loggedInUserId,
+  isTrainingActionDisabled,
+  // menu
+  anchorEl,
+  onIconClick,
+  onClose,
+  actionMenuMap,
+  onActionMenuOpen,
+  onActionMenuClose,
+  // training actions
+  onCancelTrainingClick,
+  isCancelModalOpen,
+  onCancelModalClose,
+  onCancelConfirm,
+  onEditTraining,
+  onNavigateToAgenda,
+  onViewCancellationReason,
+  onInfoClick,
+  onHandleViewUploadedFiles,
+  onPostpone,
+  onCancel,
+  // user view extras
+  formattedData2,
+}) {
+  return (
+    <React.Fragment>
+      <TableRow className="table-rowcontent">
+        <TableCell align="center">
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {index + 1}
+            {training.status !== "Training Created" && (
+              <IconButton
+                onClick={() => onExpandClick(training.id)}
+                size="small"
+                style={{ marginLeft: "8px" }}
+              >
+                {expanded[training.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            )}
+          </div>
+        </TableCell>
+        <TableCell align="left">{generateRefNo(training.id)}</TableCell>
+        <TableCell>
+          {training.date ? dayjs(training.date).format("DD-MM-YYYY") : "N/A"}
+        </TableCell>
+        <TableCell>
+          <Tooltip title={training.branch}>
+            <span>
+              {branchMaster.length > 0 &&
+              training.branch.split(", ").length === branchMaster.length - 1
+                ? "PAN INDIA"
+                : training.branch.split(", ")[0] +
+                  (training.branch.split(", ").length > 1 ? " ++" : "")}
+            </span>
+          </Tooltip>
+        </TableCell>
+        <TableCell>
+          <Tooltip title={training.department}>
+            <span>
+              {departmentMaster.length > 0 &&
+              training.department.split(", ").length ===
+                departmentMaster.length - 1
+                ? "All Departments"
+                : training.department.split(", ")[0] +
+                  (training.department.split(", ").length > 1 ? " ++" : "")}
+            </span>
+          </Tooltip>
+        </TableCell>
+        <TableCell>{training.topic}</TableCell>
+        <TableCell>{training.trainerType}</TableCell>
+        <TableCell>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {renderMilestones(training)}
+          </div>
+        </TableCell>
+ 
+        {/* Admin actions column */}
+        {topTab === 1 &&
+          nestedTab === 0 &&
+          (hasAccess("Training Summary", "Training Admin View", "View") ||
+            hasAccess(
+              "Training Summary",
+              "Training Admin View",
+              "View/Create/Edit"
+            )) && (
+            <TableCell align="center">
+              <IconButton onClick={(e) => onIconClick(e, training.id)}>
+                <MoreHorizIcon />
+              </IconButton>
+              <Popover
+                open={Boolean(anchorEl[training.id])}
+                anchorEl={anchorEl[training.id]}
+                onClose={() => onClose(training.id)}
+                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                transformOrigin={{ vertical: "top", horizontal: "center" }}
+              >
+                {training.status === "Cancelled" ? (
+                  <Button
+                    onClick={() => onViewCancellationReason(training)}
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<InfoIcon />}
+                  >
+                    View Cancellation Reason
+                  </Button>
+                ) : (
+                  <>
+                    <MenuItem
+                      onClick={() => onCancelTrainingClick(training.id)}
+                      disabled={isTrainingActionDisabled(training, loggedInUserId)}
+                      title={`Created by: ${training.user_name}`}
+                    >
+                      <CancelIcon sx={{ marginRight: 1 }} /> Cancel{" "}
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "0.8rem",
+                          color: "#888",
+                        }}
+                      >
+                        {training.user_name}
+                      </span>
+                    </MenuItem>
+                    <CancelReasonModal
+                      open={isCancelModalOpen}
+                      onClose={onCancelModalClose}
+                      onConfirm={onCancelConfirm}
+                    />
+                    <MenuItem
+                      onClick={() => onEditTraining(training.id)}
+                      disabled={isTrainingActionDisabled(training, loggedInUserId)}
+                      title={`Created by: ${training.user_name}`}
+                    >
+                      <EditIcon sx={{ marginRight: 1 }} /> Edit{" "}
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "0.8rem",
+                          color: "#888",
+                        }}
+                      >
+                        {training.user_name}
+                      </span>
+                    </MenuItem>
+                    {training.status === "Training Created" && (
+                      <MenuItem
+                        onClick={() => onNavigateToAgenda(training)}
+                        disabled={training.emp_id !== loggedInUserId}
+                        title={`Created by: ${training.user_name}`}
+                      >
+                        <AddCircleIcon sx={{ marginRight: 1 }} /> Add Session{" "}
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: "0.8rem",
+                            color: "#888",
+                          }}
+                        >
+                          {training.user_name}
+                        </span>
+                      </MenuItem>
+                    )}
+                  </>
+                )}
+              </Popover>
+            </TableCell>
+          )}
+      </TableRow>
+ 
+      {/* Expanded sessions row */}
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={12}>
+          <Collapse in={expanded[training.id]} timeout="auto" unmountOnExit>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ bgcolor: "#2E157A" }}>
+                  <TableCell sx={{ fontWeight: "bold", color: "white" }}>
+                    Session Title
+                    <Tooltip
+                      title="View detailed session information"
+                      componentsProps={{
+                        tooltip: {
+                          sx: { backgroundColor: "#1A005D", color: "white" },
+                        },
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={() => onInfoClick(training.id)}
+                        sx={{ color: "white" }}
+                      >
+                        <InfoIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                  {[
+                    "Scheduled Date",
+                    "Start Time",
+                    "End Time",
+                    "Trainer",
+                    "Mode",
+                    "Status",
+                    "Actions",
+                  ].map((h) => (
+                    <TableCell key={h} sx={{ fontWeight: "bold", color: "white" }}>
+                      {h}
+                    </TableCell>
+                  ))}
+                  <TableCell sx={{ fontWeight: "bold", color: "white", textAlign: "center" }}>
+                    <Tooltip title="Uploaded Documents">
+                      <FolderIcon sx={{ color: "white" }} />
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {!sessionsData[training.id] && expanded[training.id] ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                      <CircularProgress size={24} />
+                    </TableCell>
+                  </TableRow>
+                ) : (sessionsData[training.id] || []).length > 0 ? (
+                  (sessionsData[training.id] || []).map((session) => (
+                    <TableRow
+                      key={session.session_no}
+                      sx={{
+                        "&:nth-of-type(odd)": {
+                          bgcolor: "rgba(46,21,122,0.1)",
+                        },
+                        "&:nth-of-type(even)": { bgcolor: "#ffffff" },
+                      }}
+                    >
+                      <TableCell>{session.session_description}</TableCell>
+                      <TableCell>{formatDate(session.session_date)}</TableCell>
+                      <TableCell>{formatTime(session.from_time)}</TableCell>
+                      <TableCell>{formatTime(session.to_time)}</TableCell>
+                      <TableCell>{session.trainer_name}</TableCell>
+                      <TableCell>{session.mode_of_training}</TableCell>
+                      <TableCell>
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          {renderSessionMilestones(session)}
+                        </div>
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={(e) =>
+                            onActionMenuOpen(e, session.session_no, training.id)
+                          }
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                        <Menu
+                          anchorEl={
+                            actionMenuMap[
+                              `${training.id}_${session.session_no}`
+                            ] ?? null
+                          }
+                          open={Boolean(
+                            actionMenuMap[
+                              `${training.id}_${session.session_no}`
+                            ]
+                          )}
+                          onClose={() =>
+                            onActionMenuClose(training.id, session.session_no)
+                          }
+                          anchorOrigin={{
+                            vertical: "bottom",
+                            horizontal: "right",
+                          }}
+                          transformOrigin={{
+                            vertical: "top",
+                            horizontal: "right",
+                          }}
+                        >
+                          {renderSessionActionItems(session, training)}
+                          {(() => {
+                            const sd = new Date(session.session_date);
+                            const [fh, fm, fs] = session.from_time
+                              .split(":")
+                              .map(Number);
+                            sd.setHours(fh, fm, fs, 0);
+                            const started = new Date() >= sd;
+                            return (
+                              !started && (
+                                <>
+                                  <MenuItem
+                                    key={session.session_no}
+                                    onClick={() => onPostpone(session)}
+                                  >
+                                    <ScheduleIcon color="warning" />
+                                    Postpone
+                                  </MenuItem>
+                                  <MenuItem
+                                    onClick={() => onCancel(session.session_no)}
+                                  >
+                                    <CancelIcon color="error" />
+                                    Cancel
+                                  </MenuItem>
+                                </>
+                              )
+                            );
+                          })()}
+                        </Menu>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip
+                          title="View uploaded documents"
+                          componentsProps={{
+                            tooltip: {
+                              sx: {
+                                backgroundColor: "#1A005D",
+                                color: "white",
+                              },
+                            },
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              onHandleViewUploadedFiles(
+                                session.planing_id,
+                                session.session_no
+                              )
+                            }
+                            sx={{ color: "#1A005D" }}
+                          >
+                            <DescriptionIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      No sessions available for this training.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </React.Fragment>
+  );
+});
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 function AdminDashboardContent() {
@@ -395,8 +993,13 @@ function AdminDashboardContent() {
   const [customStartDate, setCustomStartDate] = useState(null);
   const [customEndDate, setCustomEndDate] = useState(null);
   const [statusFilter, setStatusFilter] = useState([]);
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ branch: '', department: '', status: '', planningType: '' });
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+   const [filters, setFilters] = useState({ branch: '', department: '', status: '', planningType: '' });
   const [multifilters, setmultiFilters] = useState({ branch: [], department: [], status: [], planningType: [] });
   const [filtersOptions, setFiltersOptions] = useState({ branches: [], departments: [], statuses: [], planningTypes: [] });
 
@@ -609,23 +1212,26 @@ function AdminDashboardContent() {
   // ─── Fetch admin training data ────────────────────────────────────────────
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { emp_id: userId, userRole } = JSON.parse(sessionStorage.getItem('userDetails')) || {};
-        if (!userId) throw new Error('User ID missing in session storage.');
-        const roleRes = await axios.post(`${API_BASE_URL}/roleRoutes/roleMaster/FunctionalityListforRoleManagement`, { userRole });
-        if (!roleRes.data?.['Branch Assign'] || !roleRes.data?.['Department Assign']) throw new Error('Invalid role response format.');
-        const payload = {
-          branch_list: roleRes.data['Branch Assign']['Branch Select']['Branch List'] || [],
-          department_list: roleRes.data['Department Assign']['Department Select']['Department List'] || [],
-        };
-        const res = await axios.post(`${API_BASE_URL}/planning-route/viewPlaningInfo`, payload);
-        if (res.data && Array.isArray(res.data.data)) { setTrainingData(res.data.data); setError(null); }
-        else throw new Error('Unexpected response format.');
-      } catch (e) { console.error('Error fetching training data:', e); setError(e.message); }
-    };
-    fetchData();
-  }, [API_BASE_URL]);
+  const fetchData = async () => {
+    try {
+      // ── Use already-stored role permissions instead of re-fetching ──
+      const { emp_id: userId } = JSON.parse(sessionStorage.getItem('userDetails')) || {};
+      if (!userId) throw new Error('User ID missing in session storage.');
+
+      const storedPermissions = JSON.parse(sessionStorage.getItem('rolePermissions')) || {};
+      const payload = {
+        branch_list:     storedPermissions?.['Branch Assign']?.['Branch Select']?.['Branch List']     || [],
+        department_list: storedPermissions?.['Department Assign']?.['Department Select']?.['Department List'] || [],
+      };
+
+      const res = await axios.post(`${API_BASE_URL}/planning-route/viewPlaningInfo`, payload);
+      if (res.data && Array.isArray(res.data.data)) { setTrainingData(res.data.data); setError(null); }
+            else throw new Error('Unexpected response format.');
+          } catch (e) { console.error('Error fetching training data:', e); setError(e.message); }
+          finally { setLoading(false); }
+  };
+  fetchData();
+}, [API_BASE_URL]);
 
   // ─── Fetch user training data ─────────────────────────────────────────────
 
@@ -720,29 +1326,20 @@ function AdminDashboardContent() {
 
   
 
-  // ─── Session fetch on training click ─────────────────────────────────────
 
-  useEffect(() => {
-    if (selectedTrainingId) fetchSessionsForTraining(selectedTrainingId);
-  }, [selectedTrainingId]);
 
   // ─── Standard payload helper ──────────────────────────────────────────────
 
   const getStandardPayload = useCallback(async () => {
-    const { emp_id: userId, userRole } = JSON.parse(sessionStorage.getItem('userDetails')) || {};
-    if (!userId) throw new Error('User ID is missing in session storage.');
-    let branch_list = [], department_list = [];
-    if (userRole) {
-      try {
-        const res = await axios.post(`${API_BASE_URL}/roleRoutes/roleMaster/FunctionalityListforRoleManagement`, { userRole });
-        if (res.data) {
-          branch_list = res.data['Branch Assign']?.['Branch Select']?.['Branch List'] || [];
-          department_list = res.data['Department Assign']?.['Department Select']?.['Department List'] || [];
-        }
-      } catch (e) { console.error('Error fetching role data:', e); }
-    }
-    return { branch_list, department_list };
-  }, [API_BASE_URL]);
+  const { emp_id: userId } = JSON.parse(sessionStorage.getItem('userDetails')) || {};
+  if (!userId) throw new Error('User ID is missing in session storage.');
+  // ── Read from sessionStorage directly — no extra API call needed ──
+  const storedPermissions = JSON.parse(sessionStorage.getItem('rolePermissions')) || {};
+  return {
+    branch_list:     storedPermissions?.['Branch Assign']?.['Branch Select']?.['Branch List']           || [],
+    department_list: storedPermissions?.['Department Assign']?.['Department Select']?.['Department List'] || [],
+  };
+}, []);   
 
   // ─── Fetch training data (refresh) ───────────────────────────────────────
 
@@ -2331,56 +2928,7 @@ const handleConfirmSubmit = useCallback(async () => {
       fetchSessionsForTraining, showSnackbar, API_BASE_URL]);  
   // ─── Filters component ────────────────────────────────────────────────────
 
-  const Filters = useCallback(({ isAdmin }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-      {/* Branch Filter */}
-      <Autocomplete multiple size="small" sx={{ minWidth: '180px', flexGrow: 1 }}
-        options={[{ branch_id: 'all', branch_name: 'PAN INDIA' }, ...branchMaster.filter(b => b.branch_id !== 'all')]}
-        value={Array.isArray(multifilters.branch) && multifilters.branch.length === branchMaster.length - 1 ? [{ branch_id: 'all', branch_name: 'PAN INDIA' }] : multifilters.branch || []}
-        onChange={(e, newVals) => {
-          if (newVals.some(b => b.branch_id === 'all')) handleMultiSelectChange('branch', [{ branch_id: 'all', branch_name: 'PAN INDIA' }]);
-          else { const filtered = newVals.filter(b => b.branch_id !== 'all'); handleMultiSelectChange('branch', filtered.length === branchMaster.length - 1 ? [{ branch_id: 'all', branch_name: 'PAN INDIA' }] : filtered); }
-        }}
-        disableCloseOnSelect getOptionLabel={o => o?.branch_name || ''}
-        renderOption={(props, option, { selected }) => (<li {...props}><Checkbox checked={selected} />{option.branch_name}</li>)}
-        renderInput={params => (
-          <TextField {...params} label="Branch" InputLabelProps={{ shrink: Boolean(multifilters.branch.length) }}
-            InputProps={{ ...params.InputProps, startAdornment: (<Typography variant="body2" noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px', fontSize: '12px' }}>{Array.isArray(multifilters.branch) && multifilters.branch.length > 0 ? (multifilters.branch.some(b => b.branch_id === 'all') ? 'PAN INDIA' : multifilters.branch.length === 1 ? multifilters.branch[0]?.branch_name : `${multifilters.branch[0]?.branch_name} (+${multifilters.branch.length - 1} More)`) : ''}</Typography>) }}
-          />
-        )}
-      />
-      {/* Department Filter */}
-      <Autocomplete multiple size="small" sx={{ minWidth: '180px', flexGrow: 1 }}
-        options={[{ department_id: 'all', department_name: 'All Departments' }, ...departmentMaster.filter(d => d.department_id !== 'all')]}
-        value={Array.isArray(multifilters.department) && multifilters.department.length === departmentMaster.length - 1 ? [{ department_id: 'all', department_name: 'All Departments' }] : multifilters.department || []}
-        onChange={(e, newVals) => {
-          if (newVals.some(d => d.department_id === 'all')) handleMultiSelectChange('department', [{ department_id: 'all', department_name: 'All Departments' }]);
-          else { const filtered = newVals.filter(d => d.department_id !== 'all'); handleMultiSelectChange('department', filtered.length === departmentMaster.length - 1 ? [{ department_id: 'all', department_name: 'All Departments' }] : filtered); }
-        }}
-        disableCloseOnSelect getOptionLabel={o => o.department_name || ''}
-        renderOption={(props, option, { selected }) => (<li {...props}><Checkbox checked={selected} />{option.department_name}</li>)}
-        renderInput={params => (
-          <TextField {...params} label="Department" InputLabelProps={{ shrink: Boolean(multifilters.department.length) }}
-            InputProps={{ ...params.InputProps, startAdornment: (<Typography variant="body2" noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px', fontSize: '12px' }}>{Array.isArray(multifilters.department) && multifilters.department.length > 0 ? (multifilters.department.some(d => d.department_id === 'all') ? 'All Departments' : multifilters.department.length === 1 ? multifilters.department[0]?.department_name : `${multifilters.department[0]?.department_name} (+${multifilters.department.length - 1} More)`) : ''}</Typography>) }}
-          />
-        )}
-      />
-      {/* Status Filter */}
-      <Autocomplete size="small" sx={{ minWidth: '180px', flexGrow: 1 }}
-        options={[...new Set(filterOptions.statuses.includes('N/A') ? filterOptions.statuses.map(s => s === 'N/A' ? 'Feedback Assigned' : s) : filterOptions.statuses)].sort((a, b) => a.localeCompare(b))}
-        value={Array.isArray(filters.status) ? (filters.status[0] === 'N/A' ? 'Feedback Assigned' : filters.status[0]) : (filters.status === 'N/A' ? 'Feedback Assigned' : filters.status)}
-        onChange={(e, v) => { const val = v === 'Feedback Assigned' ? 'N/A' : v; setFilters(prev => ({ ...prev, status: val })); setStatusFilter(val ? [val] : []); setPage(0); }}
-        renderInput={params => <TextField {...params} label="Status" />}
-      />
-      {isAdmin && topTab === 1 && (
-        <Tooltip title="Add New Training" placement="top" componentsProps={{ tooltip: { sx: { backgroundColor: '#1A005D', color: 'white' } } }} arrow>
-          <IconButton onClick={handleAddModalOpen} style={{ background: '#1A005D', color: 'white' }}><AddIcon style={{ color: 'white' }} /></IconButton>
-        </Tooltip>
-      )}
-    </div>
-  ), [branchMaster, departmentMaster, multifilters, filterOptions, filters, topTab, isAdmin, handleMultiSelectChange, handleAddModalOpen]);
 
-  const FiltersUser = () => <div />;
 
   // ─── Shared table header for sort ─────────────────────────────────────────
 
@@ -2407,7 +2955,7 @@ const handleConfirmSubmit = useCallback(async () => {
 
         {/* ── Search & Date Filters ── */}
         <div style={{ display: 'flex', alignItems: 'right', justifyContent: 'flex-end', gap: '16px' }}>
-          <SearchFilter searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+          <SearchFilter searchQuery={searchInput} setSearchQuery={setSearchInput} />
           <DateFilter dateFilter={dateFilter} setDateFilter={setDateFilter} customStartDate={customStartDate} setCustomStartDate={setCustomStartDate} customEndDate={customEndDate} setCustomEndDate={setCustomEndDate} />
         </div>
 
@@ -2529,7 +3077,25 @@ const handleConfirmSubmit = useCallback(async () => {
             </Tabs>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', flexGrow: 1 }}>
-            {topTab === 1 ? <Filters isAdmin={isAdmin} /> : <FiltersUser />}
+            
+            {topTab === 1 ? (
+              <Filters
+                branchMaster={branchMaster}
+                departmentMaster={departmentMaster}
+                multifilters={multifilters}
+                filterOptions={filterOptions}
+                filters={filters}
+                topTab={topTab}
+                isAdmin={isAdmin}
+                handleMultiSelectChange={handleMultiSelectChange}
+                handleAddModalOpen={handleAddModalOpen}
+                setFilters={setFilters}
+                setStatusFilter={setStatusFilter}
+                setPage={setPage}
+              />
+            ) : (
+              <FiltersUser />
+            )}
           </div>
         </div>
 
@@ -2556,133 +3122,44 @@ const handleConfirmSubmit = useCallback(async () => {
                     <TableRow><TableCell colSpan={8} align="center"><CircularProgress size={24} /></TableCell></TableRow>
                   ) : displayedData.length === 0 ? (
                     <TableRow><TableCell colSpan={8} align="center">No Trainings Available</TableCell></TableRow>
-                  ) : displayedData.map((training, index) => (
-                    <React.Fragment key={training.id}>
-                      <TableRow className="table-rowcontent">
-                        <TableCell align="center">
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
-                            {index + 1}
-                            {training.status !== 'Training Created' && (
-                              <IconButton onClick={() => handleExpandClick(training.id)} size="small" style={{ marginLeft: '8px' }}>
-                                {expanded[training.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                              </IconButton>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell align="left">{generateRefNo(training.id)}</TableCell>
-                        <TableCell>{training.date ? dayjs(training.date).format('DD-MM-YYYY') : 'N/A'}</TableCell>
-                        <TableCell><Tooltip title={training.branch}><span>{branchMaster.length > 0 && training.branch.split(', ').length === branchMaster.length - 1 ? 'PAN INDIA' : training.branch.split(', ')[0] + (training.branch.split(', ').length > 1 ? ' ++' : '')}</span></Tooltip></TableCell>
-                        <TableCell><Tooltip title={training.department}><span>{departmentMaster.length > 0 && training.department.split(', ').length === departmentMaster.length - 1 ? 'All Departments' : training.department.split(', ')[0] + (training.department.split(', ').length > 1 ? ' ++' : '')}</span></Tooltip></TableCell>
-                        <TableCell>{training.topic}</TableCell>
-                        <TableCell>{training.trainerType}</TableCell>
-                        <TableCell><div style={{ display: 'flex', alignItems: 'center' }}>{renderMilestones(training)}</div></TableCell>
-                        {((topTab === 1 && nestedTab === 0) || (topTab === 1 && nestedTab === 1)) && (hasAccess('Training Summary', 'Training Admin View', 'View') || hasAccess('Training Summary', 'Training Admin View', 'View/Create/Edit')) && (
-                          <TableCell align="center">
-                            <IconButton onClick={e => { handleIconClick(e, training.id); }}><MoreHorizIcon /></IconButton>
-                            <Popover open={Boolean(anchorEl[training.id])} anchorEl={anchorEl[training.id]} onClose={() => handleClose(training.id)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} transformOrigin={{ vertical: 'top', horizontal: 'center' }}>
-                              {training.status === 'Cancelled' ? (
-                                <Button onClick={() => handleViewCancellationReason(training)} variant="contained" color="secondary" startIcon={<InfoIcon />}>View Cancellation Reason</Button>
-                              ) : (
-                                <>
-                                  <MenuItem onClick={() => handleCancelTrainingClick(training.id)} disabled={isTrainingActionDisabled(training, loggedInUserId)} title={`Created by: ${training.user_name}`}>
-                                    <CancelIcon sx={{ marginRight: 1 }} /> Cancel <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#888' }}>{training.user_name}</span>
-                                  </MenuItem>
-                                  <CancelReasonModal open={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} onConfirm={handleCancelConfirm} />
-                                  <MenuItem onClick={() => handleEditTraining(training.id)} disabled={isTrainingActionDisabled(training, loggedInUserId)} title={`Created by: ${training.user_name}`}>
-                                    <EditIcon sx={{ marginRight: 1 }} /> Edit <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#888' }}>{training.user_name}</span>
-                                  </MenuItem>
-                                  {training.status === 'Training Created' && (
-                                    <MenuItem onClick={() => navigateToAgenda(training)} disabled={training.emp_id !== loggedInUserId} title={`Created by: ${training.user_name}`}>
-                                      <AddCircleIcon sx={{ marginRight: 1 }} /> Add Session <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#888' }}>{training.user_name}</span>
-                                    </MenuItem>
-                                  )}
-                                </>
-                              )}
-                            </Popover>
-                          </TableCell>
-                        )}
-                      </TableRow>
-
-                      {/* ── Expanded Sessions Row (Admin) ── */}
-                      {nestedTab === 0 && (
-                        <TableRow>
-                          <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={12}>
-                            <Collapse in={expanded[training.id]} timeout="auto" unmountOnExit>
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow sx={{ bgcolor: '#2E157A' }}>
-                                    <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>
-                                      Session Title
-                                      <Tooltip title="View detailed session information" componentsProps={{ tooltip: { sx: { backgroundColor: '#1A005D', color: 'white' } } }}>
-                                        <IconButton size="small" onClick={() => handleInfoClick(training.id)} sx={{ color: 'white' }}><InfoIcon fontSize="small" /></IconButton>
-                                      </Tooltip>
-                                    </TableCell>
-                                    {['Scheduled Date', 'Start Time', 'End Time', 'Trainer', 'Mode', 'Status', 'Actions'].map(h => <TableCell key={h} sx={{ fontWeight: 'bold', color: 'white' }}>{h}</TableCell>)}
-                                    <TableCell sx={{ fontWeight: 'bold', color: 'white', textAlign: 'center' }}><Tooltip title="Uploaded Documents"><FolderIcon sx={{ color: 'white' }} /></Tooltip></TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {!sessionsData[training.id] && expanded[training.id] ? (
-                                    <TableRow><TableCell colSpan={8} align="center" sx={{ py: 3 }}><CircularProgress size={24} /></TableCell></TableRow>
-                                  ) : (sessionsData[training.id] || []).length > 0 ? (
-                                    sessionsData[training.id].map(session => (
-                                      <TableRow key={session.session_no} sx={{ '&:nth-of-type(odd)': { bgcolor: 'rgba(46,21,122,0.1)' }, '&:nth-of-type(even)': { bgcolor: '#ffffff' } }}>
-                                        <TableCell>{session.session_description}</TableCell>
-                                        <TableCell>{formatDate(session.session_date)}</TableCell>
-                                        <TableCell>{formatTime(session.from_time)}</TableCell>
-                                        <TableCell>{formatTime(session.to_time)}</TableCell>
-                                        <TableCell>{session.trainer_name}</TableCell>
-                                        <TableCell>{session.mode_of_training}</TableCell>
-                                        <TableCell><div style={{ display: 'flex', alignItems: 'center' }}>{renderSessionMilestones(session)}</div></TableCell>
-                                        <TableCell align="center">
-                                            <IconButton
-                                              size="small"
-                                              onClick={e => handleActionMenuOpen(e, session.session_no, training.id)}
-                                            >
-                                              <MoreVertIcon />
-                                            </IconButton>
-
-                                            <Menu
-                                              anchorEl={actionMenuMap[`${training.id}_${session.session_no}`] ?? null}
-                                              open={Boolean(actionMenuMap[`${training.id}_${session.session_no}`])}
-                                              onClose={() => handleActionMenuClose(training.id, session.session_no)}
-                                              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                                              // NO disablePortal — let MUI portal it to document.body
-                                            >
-                                                 {renderSessionActionItems(session, training)}
-                                            {(() => {
-                                              const sd = new Date(session.session_date);
-                                              const [fh, fm, fs] = session.from_time.split(':').map(Number);
-                                              sd.setHours(fh, fm, fs, 0);
-                                              const started = new Date() >= sd;
-                                              return !started && (
-                                                <>
-                                                  <MenuItem key={session.session_no} onClick={() => handlePostpone(session)}><ScheduleIcon color="warning" />Postpone</MenuItem>
-                                                  <MenuItem onClick={() => handleCancel(session.session_no)}><CancelIcon color="error" />Cancel</MenuItem>
-                                                </>
-                                              );
-                                            })()}
-                                          </Menu>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                          <Tooltip title="View uploaded documents" componentsProps={{ tooltip: { sx: { backgroundColor: '#1A005D', color: 'white' } } }}>
-                                            <IconButton size="small" onClick={() => HandleViewUploadedFiles(session.planing_id, session.session_no)} sx={{ color: '#1A005D' }}><DescriptionIcon fontSize="small" /></IconButton>
-                                          </Tooltip>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))
-                                  ) : (
-                                    <TableRow><TableCell colSpan={8} align="center">No sessions available for this training.</TableCell></TableRow>
-                                  )}
-                                </TableBody>
-                              </Table>
-                            </Collapse>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  ))}
+                    ) : displayedData.map((training, index) => (
+                      <TrainingRow
+                        key={training.id}
+                        training={training}
+                        index={index}
+                        expanded={expanded}
+                        onExpandClick={handleExpandClick}
+                        sessionsData={sessionsData}
+                        branchMaster={branchMaster}
+                        departmentMaster={departmentMaster}
+                        renderMilestones={renderMilestones}
+                        renderSessionMilestones={renderSessionMilestones}
+                        renderSessionActionItems={renderSessionActionItems}
+                        hasAccess={hasAccess}
+                        topTab={topTab}
+                        nestedTab={nestedTab}
+                        loggedInUserId={loggedInUserId}
+                        isTrainingActionDisabled={isTrainingActionDisabled}
+                        anchorEl={anchorEl}
+                        onIconClick={handleIconClick}
+                        onClose={handleClose}
+                        actionMenuMap={actionMenuMap}
+                        onActionMenuOpen={handleActionMenuOpen}
+                        onActionMenuClose={handleActionMenuClose}
+                        onCancelTrainingClick={handleCancelTrainingClick}
+                        isCancelModalOpen={isCancelModalOpen}
+                        onCancelModalClose={() => setIsCancelModalOpen(false)}
+                        onCancelConfirm={handleCancelConfirm}
+                        onEditTraining={handleEditTraining}
+                        onNavigateToAgenda={navigateToAgenda}
+                        onViewCancellationReason={handleViewCancellationReason}
+                        onInfoClick={handleInfoClick}
+                        onHandleViewUploadedFiles={HandleViewUploadedFiles}
+                        onPostpone={handlePostpone}
+                        onCancel={handleCancel}
+                        formattedData2={formattedData2}
+                      />
+                    ))}
                 </TableBody>
               </Table>
             </div>

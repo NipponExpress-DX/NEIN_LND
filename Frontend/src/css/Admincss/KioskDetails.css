@@ -1,0 +1,291 @@
+/* KioskDetails.css */
+
+.kiosk-details-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d1b2a 0%, #1A005D 100%);
+  padding: 24px 16px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.kiosk-details-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 48px 24px;
+  max-width: none;
+  width: 90%;
+  height: 90vh;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  overflow-y: auto;   /* safety net only — shouldn't be needed now */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top bar */
+.details-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.details-org {
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  letter-spacing: 1px;
+}
+.details-step-badge {
+  font-size: 12px;
+  font-weight: 500;
+  background: #e8f4fb;
+  color: #185fa5;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+/* Hero */
+.details-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #003d5c;
+  margin: 0 0 4px;
+}
+.details-subtitle {
+  font-size: 13px;
+  color: #888;
+  margin: 0 0 16px;
+}
+
+/* Error banner */
+.details-error-banner {
+  background: #fdf0f0;
+  border: 1px solid #f5c6c6;
+  color: #b32d2d;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+
+/* Form — Name / Contact / DOB share a row now */
+.details-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.details-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+}
+
+.form-group input {
+  padding: 9px 14px;
+  border: 1px solid #dde1e7;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.form-group input:focus {
+  border-color: #005580;
+  box-shadow: 0 0 0 3px rgba(0,85,128,0.08);
+}
+.form-group input.input-error {
+  border-color: #e74c3c;
+}
+
+.req    { color: #e74c3c; margin-left: 2px; }
+.optional { color: #aaa; font-weight: 400; font-size: 12px; margin-left: 4px; }
+
+.field-error {
+  font-size: 12px;
+  color: #e74c3c;
+}
+
+/* Visitor type chips — slightly shorter */
+.visitor-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.type-chip {
+  padding: 9px;
+  border: 1.5px solid #dde1e7;
+  border-radius: 8px;
+  background: #f7f8fa;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.type-chip:hover {
+  border-color: #005580;
+  background: #eaf3fb;
+  color: #003d5c;
+}
+.type-chip.selected {
+  border-color: #003d5c;
+  background: #003d5c;
+  color: #fff;
+}
+
+
+/* Actions pinned at bottom, no extra margin pushing card taller */
+.details-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-continue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-continue:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(231,76,60,0.35);
+}
+.btn-continue:disabled { opacity: 0.6; cursor: not-allowed; }
+
+
+.btn-back {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.btn-back:hover:not(:disabled) { background: #f5f5f5; color: #555; }
+.btn-back:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Spinner */
+.spinner { display: inline-block; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+.spinner-path { stroke: white; stroke-linecap: round; animation: dash 1.5s ease-in-out infinite; }
+@keyframes spin  { 100% { transform: rotate(360deg); } }
+@keyframes dash  {
+  0%   { stroke-dasharray: 1,150; stroke-dashoffset: 0; }
+  50%  { stroke-dasharray: 90,150; stroke-dashoffset: -35; }
+  100% { stroke-dasharray: 90,150; stroke-dashoffset: -124; }
+}
+
+@media (max-width: 480px) {
+  .kiosk-details-card { padding: 24px 18px 20px; }
+  .visitor-type-grid  { grid-template-columns: 1fr 1fr; }
+}
+.pin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.pin-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.pin-modal-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.pin-modal h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1A005D;
+  margin-bottom: 0.5rem;
+}
+
+.pin-modal-sub {
+  font-size: 0.88rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+.pin-modal-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.5rem;
+  color: #1A005D;
+  background: #f0f4ff;
+  border: 2px dashed #1A005D;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.pin-modal-note {
+  font-size: 0.8rem;
+  color: #ef4444;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.pin-modal-btn {
+  width: 100%;
+  padding: 0.85rem;
+  background: #1A005D;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pin-modal-btn:hover {
+  background: #2d0099;
+}

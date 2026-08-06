@@ -1,0 +1,270 @@
+/* ── Outer wrap ─────────────────────────────────────────── */
+.vt-wrap {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d1b2a 0%, #1A005D 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+.vt-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  width: 90%;
+  height: 90vh;
+  max-width: none;
+  overflow-y: auto;
+}
+
+.vt-topbar, .vt-info, .vt-warning, .vt-actions {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.vt-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+}
+.vt-player { max-height: 480px; }
+.vt-org   { font-weight: 700; font-size: 0.9rem; letter-spacing: 0.05em; color: #111; }
+.vt-badge {
+  background: #e8f5e9; color: #2e7d32;
+  font-size: 0.75rem; font-weight: 600;
+  padding: 4px 12px; border-radius: 999px;
+}
+.vt-lang-pill {
+  background: #e3f2fd; color: #1565c0;
+  font-size: 0.75rem; font-weight: 600;
+  padding: 4px 12px; border-radius: 999px;
+}
+
+/* ── Hero / video area ──────────────────────────────────── */
+.vt-hero {
+  background: #000;          /* black letterbox */
+  width: 100%;
+  position: relative;
+}
+
+.vt-video-area {
+  width: 100%;
+  position: relative;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+/* THE VIDEO ITSELF */
+.vt-player {
+  width: 100%;
+  max-height: 460px;
+  display: block;
+  object-fit: contain;       /* keeps aspect ratio, no crop */
+  background: #000;
+}
+
+/* ── Skip warning toast ─────────────────────────────────── */
+.vt-skip-warning {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(220, 38, 38, 0.92);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* ── Watched badge ──────────────────────────────────────── */
+.vt-watched-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(22, 163, 74, 0.92);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  z-index: 20;
+}
+
+/* ── Custom control bar ─────────────────────────────────── */
+.vt-controls {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.82);
+  padding: 6px 12px 10px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+/* Progress track */
+.vt-progress-track {
+  position: relative;
+  height: 5px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 3px;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.vt-progress-max {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  background: rgba(255,255,255,0.38);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.vt-progress-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  background: #22c55e;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* Control row */
+.vt-ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vt-ctrl-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.vt-ctrl-btn:hover { background: rgba(255,255,255,0.15); }
+
+.vt-time {
+  color: rgba(255,255,255,0.85);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.vt-ctrl-spacer { flex: 1; }
+
+.vt-volume-slider {
+  width: 72px;
+  accent-color: #22c55e;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Placeholder (no video) ─────────────────────────────── */
+.vt-placeholder {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255,255,255,0.6);
+}
+.vt-play-ring {
+  width: 64px; height: 64px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+}
+.vt-module-name { font-size: 1rem; font-weight: 600; color: #fff; }
+.vt-hint        { font-size: 0.82rem; color: rgba(255,255,255,0.5); }
+
+/* ── Info strip ─────────────────────────────────────────── */
+.vt-info {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.vt-info-item {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 1rem 0.5rem;
+  border-right: 1px solid #e5e7eb;
+  text-align: center;
+}
+.vt-info-item:last-child { border-right: none; }
+.vt-info-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 4px; }
+.vt-info-value { font-size: 0.95rem; font-weight: 600; color: #111; }
+
+/* ── Warning / error ────────────────────────────────────── */
+.vt-warning {
+  margin: 0.75rem 1.5rem 0;
+  background: #fef9c3; color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.vt-error-msg {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+/* ── Action buttons ─────────────────────────────────────── */
+.vt-actions {
+  display: flex;
+  gap: 12px;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+.vt-btn {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  transition: background 0.15s, border-color 0.15s;
+}
+.vt-btn:hover:not(:disabled) { background: #f9fafb; }
+.vt-btn.primary {
+  background: #166534; color: #fff;
+  border-color: #166534;
+}
+.vt-btn.primary:hover:not(:disabled) { background: #14532d; }
+.vt-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Loading / error states ─────────────────────────────── */
+.vt-loading, .vt-error {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 300px; gap: 16px;
+  color: #6b7280;
+}
+.vt-spinner {
+  width: 40px; height: 40px;
+  animation: vt-spin 0.9s linear infinite;
+}
+.vt-spinner circle {
+  stroke: #22c55e;
+  stroke-linecap: round;
+  stroke-dasharray: 90 150;
+  stroke-dashoffset: 0;
+}
+@keyframes vt-spin { to { transform: rotate(360deg); } }
