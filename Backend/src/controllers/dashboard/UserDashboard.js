@@ -17,33 +17,27 @@ exports.branch_assigned_to_user_attended = (req, res) => {
 
         const branchId = branchResult[0].branch_id;
 
-        const attendanceQuery = `
-                SELECT 
-                    COUNT(*) AS Assign_count,
-                    COUNT(DISTINCT CASE 
-                        WHEN pst.attendance_status = 1 THEN CONCAT(pst.planing_id, '-', pst.session_no)
-                    END) AS present_count,
-                    COUNT(DISTINCT CASE 
-                        WHEN pst.attendance_status = 0 THEN CONCAT(pst.planing_id, '-', pst.session_no)
-                    END) AS absent_count 
-                FROM hrmdb.planing_session_trainee_data pst
-                WHERE pst.trainee_id = ?
-                    AND pst.calDeleteStatus = 0 
-                    AND pst.planing_id IN (
-                        SELECT DISTINCT ps.planing_id  
-                        FROM hrmdb.planning_training_table pt
-                        LEFT JOIN leavemanagement.branchmaster bm 
-                            ON FIND_IN_SET(bm.branch_id, pt.branch_id) > 0
-                        LEFT JOIN hrmdb.planing_sessions ps 
-                            ON pt.id = ps.planing_id
-                        WHERE FIND_IN_SET(?, pt.branch_id) > 0
-                            AND pt.calDeleteStatus = 0
-                            AND ps.calDeleteStatus = 0
-                            AND YEAR(ps.session_date) = YEAR(CURDATE())
-                    )
-            `;
+       const attendanceQuery = `
+                            SELECT 
+                                COUNT(CASE 
+                                    WHEN pst.attendance_status IS NULL 
+                                        AND ps.session_date >= DATE_SUB(CURDATE(), INTERVAL 10 DAY)
+                                    THEN 1 
+                                END) AS Assign_count,
+                                COUNT(DISTINCT CASE 
+                                    WHEN pst.attendance_status = 1 THEN CONCAT(pst.planing_id, '-', pst.session_no)
+                                END) AS present_count,
+                                COUNT(DISTINCT CASE 
+                                    WHEN pst.attendance_status = 0 THEN CONCAT(pst.planing_id, '-', pst.session_no)
+                                END) AS absent_count 
+                            FROM hrmdb.planing_session_trainee_data pst
+                            JOIN hrmdb.planing_sessions ps 
+                                ON ps.planing_id = pst.planing_id AND ps.session_no = pst.session_no
+                            WHERE pst.trainee_id = ?
+                                AND pst.calDeleteStatus = 0
+                        `;
 
-        hrmdb.query(attendanceQuery, [userid, branchId], (err, attendanceResult) => {
+        hrmdb.query(attendanceQuery, [userid], (err, attendanceResult) => {
             if (err) return res.status(500).json({ message: "Error fetching attendance", error: err });
 
             const branchConductedQuery = `
@@ -781,266 +775,7 @@ END), 0) AS All_Branch_and_Dept_Total_absent_count
         });
     };
 
-
-// exports.Branch_Training_Performance = (req, res) => {
-//     let { branch_id, department_id, from_date, to_date } = req.body;
-
-//     if (!branch_id || !department_id) {
-//         return res.status(400).json({ message: "Branch ID and Department ID are required" });
-//     }
-
-//     const branchArray = branch_id.split(',').map(id => id.trim());
-//     const departmentArray = department_id.split(',').map(id => id.trim());
-
-//     let dateCondition = '';
-//     if (from_date && to_date) {
-//         dateCondition = ` AND ps.session_date BETWEEN '${from_date}' AND '${to_date}'`;
-//     }
-
-//     const userStatsQuery = `
-//         SELECT 
-//             COALESCE(pst.trainee_id, u.emp_id) AS trainee_id,
-//             COALESCE(pst.trainee_name, u.full_name) AS trainee_name,
-//             d.department_name,
-//             b.branch_name,
-//             COALESCE(COUNT(DISTINCT CASE 
-//                 WHEN pst.calDeleteStatus = 0
-//                      AND ps.calDeleteStatus = '0'
-//                      AND ps.PSstatus = 'Session Closed'
-//                      AND pt.Status = 'Final Submitted'
-//                      ${dateCondition}
-//                 THEN CONCAT(pst.planing_id, '-', pst.session_no) END), 0) AS trainings_assigned,
-//             COALESCE(COUNT(DISTINCT CASE 
-//                 WHEN pst.calDeleteStatus = 0
-//                      AND ps.calDeleteStatus = '0'
-//                      AND ps.PSstatus = 'Session Closed'
-//                      AND pt.Status = 'Final Submitted'
-//                      AND pst.attendance_status = 1
-//                      ${dateCondition}
-//                 THEN CONCAT(pst.planing_id, '-', pst.session_no) END), 0) AS trainings_completed,
-//             COALESCE(SUM(CASE 
-//                 WHEN pst.calDeleteStatus = 0
-//                      AND ps.calDeleteStatus = '0'
-//                      AND ps.PSstatus = 'Session Closed'
-//                      AND pt.Status = 'Final Submitted'
-//                      AND pst.attendance_status = 1
-//                      ${dateCondition}
-//                 THEN TIME_TO_SEC(TIMEDIFF(ps.to_time, ps.from_time)) / 3600 ELSE 0 END), 0) AS hours_spent
-//         FROM leavemanagement.user u
-//         JOIN leavemanagement.department d ON u.department_id = d.department_id
-//         JOIN leavemanagement.branchmaster b ON u.branch_id = b.branch_id
-//         LEFT JOIN hrmdb.planing_session_trainee_data pst ON pst.trainee_id = u.emp_id
-//         LEFT JOIN hrmdb.planing_sessions ps ON ps.planing_id = pst.planing_id
-//         LEFT JOIN hrmdb.planning_training_table pt ON pt.id = ps.planing_id
-//         WHERE FIND_IN_SET(u.branch_id, ?) > 0
-//           AND FIND_IN_SET(u.department_id, ?) > 0
-//         GROUP BY u.emp_id, d.department_name, b.branch_name
-//         HAVING trainings_assigned > 0
-//     `;
-
-//     const branchStatusQuery = `
-//         SELECT 
-//             b.branch_name,
-//             COALESCE(dc.Total_assigned_count, 0) AS Total_assigned_count,
-//             COALESCE(dc.Total_attended_count, 0) AS Total_attended_count,
-//             COALESCE(dc.Total_completed_count, 0) AS Total_completed_count,
-//             COALESCE(dh.total_hours, 0) AS Total_hours_spent
-//         FROM leavemanagement.branchmaster b
-//         LEFT JOIN (
-//             SELECT 
-//                 u.branch_id,
-//                 COUNT(DISTINCT CASE 
-//                     WHEN pst.calDeleteStatus = 0 
-//                          AND ps.calDeleteStatus = '0'
-//                          AND ps.PSstatus = 'Session Closed'
-//                          AND pt.Status = 'Final Submitted'
-//                          ${dateCondition}
-//                     THEN CONCAT(pst.planing_id, '-', pst.session_no) 
-//                 END) AS Total_assigned_count,
-//                 COUNT(DISTINCT CASE 
-//                     WHEN pst.calDeleteStatus = 0 
-//                          AND ps.calDeleteStatus = '0'
-//                          AND ps.PSstatus = 'Session Closed'
-//                          AND pt.Status = 'Final Submitted'
-//                          AND pst.attendance_status IS NOT NULL
-//                          ${dateCondition}
-//                     THEN CONCAT(pst.planing_id, '-', pst.session_no) 
-//                 END) AS Total_attended_count,
-//                 COUNT(DISTINCT CASE 
-//                     WHEN pst.calDeleteStatus = 0 
-//                          AND ps.calDeleteStatus = '0'
-//                          AND ps.PSstatus = 'Session Closed'
-//                          AND pt.Status = 'Final Submitted'
-//                          AND pst.attendance_status = 1
-//                          ${dateCondition}
-//                     THEN CONCAT(pst.planing_id, '-', pst.session_no) 
-//                 END) AS Total_completed_count
-//             FROM leavemanagement.user u
-//             LEFT JOIN hrmdb.planing_session_trainee_data pst ON pst.trainee_id = u.emp_id
-//             LEFT JOIN hrmdb.planing_sessions ps ON ps.planing_id = pst.planing_id
-//             LEFT JOIN hrmdb.planning_training_table pt ON pt.id = ps.planing_id
-//             WHERE u.branch_id IN (?)
-//               AND u.department_id IN (?) 
-//             GROUP BY u.branch_id
-//         ) dc ON dc.branch_id = b.branch_id
-//         LEFT JOIN (
-//             SELECT 
-//                 t.branch_id,
-//                 SUM(t.session_hours) AS total_hours
-//             FROM (
-//                 SELECT 
-//                     u.branch_id,
-//                     CONCAT(pst.planing_id, '-', pst.session_no, '-', pst.trainee_id) AS unique_session,
-//                     TIME_TO_SEC(TIMEDIFF(ps.to_time, ps.from_time)) / 3600 AS session_hours
-//                 FROM hrmdb.planing_session_trainee_data pst
-//                 JOIN hrmdb.planing_sessions ps ON ps.planing_id = pst.planing_id
-//                 JOIN hrmdb.planning_training_table pt ON pt.id = ps.planing_id
-//                 JOIN leavemanagement.user u ON u.emp_id = pst.trainee_id
-//                 WHERE pst.calDeleteStatus = 0 
-//                   AND ps.calDeleteStatus = '0'
-//                   AND ps.PSstatus = 'Session Closed'
-//                   AND pt.Status = 'Final Submitted'
-//                   AND pst.attendance_status = 1
-//                   AND u.branch_id IN (?)
-//                   AND u.department_id IN (?)
-//                   ${dateCondition}
-//                 GROUP BY u.branch_id, unique_session
-//             ) t
-//             GROUP BY t.branch_id
-//         ) dh ON dh.branch_id = b.branch_id
-//         WHERE b.branch_id IN (?)
-//           AND EXISTS (
-//               SELECT 1 
-//               FROM leavemanagement.user u 
-//               WHERE u.branch_id = b.branch_id 
-//                 AND u.department_id IN (?)
-//           )
-//     `;
-
-//     const overallStatsQuery = `
-//         SELECT 
-//             COALESCE(COUNT(DISTINCT CASE
-//                 WHEN pst.calDeleteStatus = 0 
-//                      AND ps.calDeleteStatus = '0'
-//                      AND ps.PSstatus = 'Session Closed'
-//                      AND pt.Status = 'Final Submitted'
-//                      ${dateCondition}
-//                 THEN CONCAT(pst.planing_id, '-', pst.session_no)
-//             END), 0) AS All_Branch_and_Dept_Total_assigned_count_completed,
-//             COALESCE(COUNT(DISTINCT CASE
-//                 WHEN pst.calDeleteStatus = 0 
-//                      AND ps.calDeleteStatus = '0'
-//                      AND ps.PSstatus != 'Session Closed'
-//                      AND pt.Status != 'Final Submitted'
-//                      AND pst.attendance_status != '1'
-//                      ${dateCondition}
-//                 THEN CONCAT(pst.planing_id, '-', pst.session_no)
-//             END), 0) AS All_Branch_and_Dept_Total_assigned_count_Processing,
-//             COALESCE(
-//                 COUNT(DISTINCT 
-//                     CASE 
-//                         WHEN pst.calDeleteStatus = 0 
-//                              AND ps.calDeleteStatus = '0'
-//                              AND ps.PSstatus = 'Session Closed'
-//                              AND pt.Status = 'Final Submitted'
-//                              AND pst.attendance_status = '1'
-//                              ${dateCondition}
-//                         THEN CONCAT(pst.planing_id, '-', pst.session_no,'-',pst.trainee_id)
-//                     END
-//                 ), 0
-//             ) AS All_Branch_and_Dept_Total_attended_count,
-//             COALESCE(COUNT(DISTINCT CASE 
-//                 WHEN pst.calDeleteStatus = 0 
-//                      AND ps.calDeleteStatus = '0'
-//                      AND ps.PSstatus = 'Session Closed'
-//                      AND pt.Status = 'Final Submitted'
-//                      AND pst.attendance_status != '1'
-//                      ${dateCondition}
-//                 THEN CONCAT(pst.planing_id, '-', pst.session_no, '-', pst.trainee_id)
-//             END), 0) AS All_Branch_and_Dept_Total_absent_count,
-//             (
-//                 SELECT 
-//                     COALESCE(SUM(duration), 0) 
-//                 FROM (
-//                     SELECT 
-//                         DISTINCT CONCAT(pst.planing_id, '-', pst.session_no, '-', pst.trainee_id) AS unique_key,
-//                         TIME_TO_SEC(TIMEDIFF(ps.to_time, ps.from_time)) / 3600 AS duration
-//                     FROM hrmdb.planing_session_trainee_data pst
-//                     JOIN hrmdb.planing_sessions ps ON ps.planing_id = pst.planing_id
-//                     JOIN hrmdb.planning_training_table pt ON pt.id = ps.planing_id
-//                     JOIN leavemanagement.user u2 ON pst.trainee_id = u2.emp_id
-//                     WHERE pst.calDeleteStatus = 0 
-//                       AND ps.calDeleteStatus = '0'
-//                       AND ps.PSstatus = 'Session Closed'
-//                       AND pt.Status = 'Final Submitted'
-//                       AND pst.attendance_status = 1
-//                       AND FIND_IN_SET(u2.branch_id, '${branchArray.join(",")}') > 0
-//                       AND FIND_IN_SET(u2.department_id, '${departmentArray.join(",")}') > 0
-//                       ${dateCondition}
-//                 ) AS distinct_durations
-//             ) AS All_Branch_and_Dept_Total_hours_spent
-//         FROM leavemanagement.user u
-//         JOIN leavemanagement.branchmaster b ON u.branch_id = b.branch_id
-//         LEFT JOIN hrmdb.planing_session_trainee_data pst ON pst.trainee_id = u.emp_id
-//         LEFT JOIN hrmdb.planing_sessions ps ON ps.planing_id = pst.planing_id
-//         LEFT JOIN hrmdb.planning_training_table pt ON pt.id = ps.planing_id
-//         WHERE FIND_IN_SET(u.branch_id, ?) > 0
-//           AND FIND_IN_SET(u.department_id, ?) > 0
-//     `;
-
-//     // Execute queries
-//     hrmdb.query(userStatsQuery, [branchArray.join(','), departmentArray.join(',')], (err, userStats) => {
-//         if (err) {
-//             return res.status(500).json({ message: "Error fetching user performance data", error: err });
-//         }
-
-//         hrmdb.query(branchStatusQuery, [branchArray, departmentArray, branchArray, departmentArray, branchArray, departmentArray], (err, branchStatus) => {
-//             if (err) {
-//                 return res.status(500).json({ message: "Error fetching branch status data", error: err });
-//             }
-
-//             hrmdb.query(overallStatsQuery, [branchArray.join(','), departmentArray.join(',')], (err, overallStats) => {
-//                 if (err) {
-//                     return res.status(500).json({ message: "Error fetching overall totals", error: err });
-//                 }
-
-//                 const stats = overallStats[0];
-//                 const total_trainings = stats.All_Branch_and_Dept_Total_assigned_count_completed + stats.All_Branch_and_Dept_Total_assigned_count_Processing;
-
-//                 const getPercentage = (part, total) => total === 0 ? "0.00" : ((part / total) * 100).toFixed(2);
-
-//                 const uniqueTraineeIds = new Set(
-//                     userStats.map(row => row.trainee_id).filter(id => id !== null && id !== undefined)
-//                 );
-
-//                 const enrichedOverallStats = {
-//                     ...stats,
-//                     total_trainings,
-//                     All_Branch_and_Dept_Total_assigned_count_completed_percentage: getPercentage(stats.All_Branch_and_Dept_Total_assigned_count_completed, total_trainings),
-//                     All_Branch_and_Dept_Total_assigned_count_Processing_percentage: getPercentage(stats.All_Branch_and_Dept_Total_assigned_count_Processing, total_trainings),
-//                     total_employee_count: uniqueTraineeIds.size
-//                 };
-
-//                 return res.json({
-//                     userStats,
-//                     branchStatus,
-//                     overallStats: enrichedOverallStats
-//                 });
-//             });
-//         });
-//     });
-// };
-
-
-
-
-
-
-
-
-    
-
-    exports.Departmental_Training_Performance= (req, res) => {
+ exports.Departmental_Training_Performance= (req, res) => {
         let { branch_id, department_id, from_date, to_date } = req.body;
     
         if (!branch_id || !department_id) {
@@ -1282,7 +1017,6 @@ WHERE FIND_IN_SET(u.branch_id, '${branchArray.join(",")}') > 0
 
 
 
-
     
         // Execute queries in sequence
         hrmdb.query(queries.userStatsQuery, [branchArray.join(','), departmentArray.join(',')], (err, userStats) => {
@@ -1340,6 +1074,52 @@ WHERE FIND_IN_SET(u.branch_id, '${branchArray.join(",")}') > 0
             });
         });
     };
+
+
+exports.trainee_training_details = (req, res) => {
+    const { userid, type } = req.body; // 'assigned' | 'attended' | 'absent'
+
+    if (!userid || !type) {
+        return res.status(400).json({ message: "User ID and type are required" });
+    }
+
+    let attendanceFilter = '';
+    if (type === 'attended') attendanceFilter = 'AND pst.attendance_status = 1';
+    else if (type === 'absent') attendanceFilter = 'AND pst.attendance_status = 0';
+    else if (type === 'assigned') attendanceFilter = "AND pst.attendance_status IS NULL AND ps.session_date >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+
+    const detailsQuery = `
+        SELECT 
+            pt.id AS planing_id,
+            pst.session_no,
+            pt.remarks AS training_name,
+            pt.Status AS training_status,
+            ps.session_date,
+            ps.from_time,
+            ps.to_time,
+            ps.PSstatus,
+            pst.attendance_status
+        FROM hrmdb.planing_session_trainee_data pst
+        JOIN hrmdb.planing_sessions ps 
+            ON ps.planing_id = pst.planing_id AND ps.session_no = pst.session_no
+        JOIN hrmdb.planning_training_table pt 
+            ON pt.id = pst.planing_id
+        WHERE pst.trainee_id = ?
+            AND pst.calDeleteStatus = 0
+            AND ps.calDeleteStatus = 0
+            ${attendanceFilter}
+        ORDER BY ps.session_date DESC
+    `;
+
+    hrmdb.query(detailsQuery, [userid], (err, results) => {
+        if (err) return res.status(500).json({ message: "Error fetching training details", error: err });
+        res.json({ trainings: results });
+    });
+};
+
+    
+
+   
 
    
 

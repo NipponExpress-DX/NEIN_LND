@@ -3,14 +3,18 @@ const router = express.Router(); // Create the router instance
 
 const {
     branch_assigned_to_user_attended,
-    department_assigned_to_user_attended ,
+    department_assigned_to_user_attended,
     Planned_branch_and_assigned_to_user_Planning_Training_under_process,
     Assign_count_Assign_to_user_time_and_Assign_attadence_count_Assign_to_user_spend_time,
     Departmental_Training_Performance,
-    Branch_Training_Performance ,
-    TrainingEffectivenessAllMeasures
-    
+    Branch_Training_Performance,
+    TrainingEffectivenessAllMeasures,
+    trainee_training_details          // add
 } = require('../controllers/dashboard/UserDashboard');
+
+router.post('/trainee_training_details', (req, res) => {
+    trainee_training_details(req, res);
+});
 
 
 // Routes branch_assigned_to_user_attended

@@ -152,6 +152,7 @@ function Agenda() {
   const [editSessionId, setEditSessionId] = useState(null);
   const [draftTrainees, setDraftTrainees] = useState([]);
   const [isDraftSaved, setIsDraftSaved] = useState(false);
+  const [isSessionSubmitting, setIsSessionSubmitting] = useState(false);
 
   // ── CHANGE 2: track IDs that could not be added (no email) ──────────────────
   const [noEmailTraineeWarnings, setNoEmailTraineeWarnings] = useState([]);
@@ -866,6 +867,7 @@ useEffect(() => {
   };
 
   const addOrUpdateSessionWithTrainee = async () => {
+     if (isSessionSubmitting) return;   
     const currentCount = sessionData.length;
     let newErrors = {};
     if (!sessions.description) newErrors.description = "Session description is required";
@@ -899,7 +901,7 @@ useEffect(() => {
     if (sessions.cost !== "" && sessions.cost !== null) payload.training_cost = sessions.cost;
     if (sessions.poNumber !== "" && sessions.poNumber !== null) payload.PO_number = sessions.poNumber;
     if (sessions.poDate !== "" && sessions.poDate !== null) payload.PO_date = sessions.poDate;
-
+    setIsSessionSubmitting(true);
     try {
       const url = editSessionId
         ? `${API_BASE_URL}/planning-route/session/update`
@@ -928,7 +930,11 @@ useEffect(() => {
       } else {
         handleOpenSnackbar("Failed to process session.", "error");
       }
-    } catch (e) { handleOpenSnackbar("Error occurred while processing session.", "error"); }
+    } catch (e) {
+      handleOpenSnackbar('Error occurred while processing session.', 'error');
+    } finally {
+      setIsSessionSubmitting(false);
+    }
   };
 
   const handleEditSession = (session) => {
@@ -1950,25 +1956,23 @@ useEffect(() => {
   }, [userDetails, trainingId]);
 
   useEffect(() => {
-    if (!userDetails?.emp_id || !trainingData?.id) return;
+  if (!userDetails?.emp_id || !trainingData?.id) return;
 
-    const knownScheduled = [
-      "Training Scheduled", "Training Conducted",
-      "Feedback Assigned", "Final Submitted", "Attendance Added",
-    ].includes(trainingData?.status);
-
+  const knownScheduled = [
+    "Training Scheduled", "Training Conducted",
+    "Feedback Assigned", "Final Submitted", "Attendance Added",
+  ].includes(trainingData?.status);
 
   if (knownScheduled) {
     setIsThirdStepVisible(true);
     setIsSubmitted(true);
     if (trainingData?.id) localStorage.setItem(`isSubmitted_${trainingData.id}`, "true");
     return;
-  }if (isAdminOrCreator) {
-    setIsThirdStepVisible(true);
-    return;
   }
+
   // Only reach here when status is "Training Created" (not yet scheduled)
   setIsThirdStepVisible(false);
+
 
   const checkVisibility = async () => {
     try {
@@ -2020,7 +2024,7 @@ useEffect(() => {
     }
   };
 
-  checkVisibility();
+ checkVisibility();
 }, [userDetails?.emp_id, trainingData.id, trainingData?.status, isAdminOrCreator]);
 
   // ── autoCoordinator effect — load all trainees immediately; branch/dept are optional filters ──
@@ -2201,9 +2205,12 @@ useEffect(() => {
                 <Grid item xs={12}>
                   <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
                     {!isSubmitted && (
-                      <Button variant="contained" onClick={addOrUpdateSessionWithTrainee}
+                    <Button
+                        variant="contained"
+                        onClick={addOrUpdateSessionWithTrainee}
+                        disabled={isSessionSubmitting}
                         sx={{ fontWeight: "bold", backgroundColor: "#1A005D", "&:hover": { backgroundColor: "#8EC400", color: "#1A005D" }, minWidth: "120px" }}>
-                        {editSessionId ? "Update Session" : "Add Session"}
+                        {isSessionSubmitting ? 'Saving...' : (editSessionId ? 'Update Session' : 'Add Session')}
                       </Button>
                     )}
                   </Box>

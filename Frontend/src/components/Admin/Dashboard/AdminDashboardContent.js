@@ -932,6 +932,7 @@ function AdminDashboardContent() {
   const [staffCategories, setStaffCategories] = useState([]);
   const [trainingTopics, setTrainingTopics] = useState([]);
   const [trainingTypes, setTrainingTypes] = useState([]);
+  const [isTrainingSubmitting, setIsTrainingSubmitting] = useState(false);
 
   // ── Modal / Dialog open states ──
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -2423,7 +2424,9 @@ const handleConfirmSubmit = useCallback(async () => {
   const handleAddModalOpen = useCallback(() => setIsAddModalOpen(true), []);
 
   const handleModalSubmit = useCallback(async () => {
+    if (isTrainingSubmitting) return;          // block double-click
     if (!validateForm()) return;
+    setIsTrainingSubmitting(true);
     try {
       const ud = JSON.parse(sessionStorage.getItem('userDetails')) || {};
       if (!ud.emp_id) { handleOpenSnackbar(SNACKBAR_MESSAGES.UsernotFound, 'error'); return; }
@@ -2460,8 +2463,13 @@ const handleConfirmSubmit = useCallback(async () => {
         fetchTrainingData();
         handleAddModalClose();
       } else throw new Error('Unexpected API response status');
-    } catch (e) { console.error('Error during submission:', e); showSnackbar(e.response?.data?.message || SNACKBAR_MESSAGES.error, 'error'); }
-  }, [validateForm, formData, branchMaster, departmentMaster, staffCategories, trainingTopics, trainingTypes, isPlanned, API_BASE_URL, showSnackbar, fetchTrainingData, handleAddModalClose, handleOpenSnackbar]);
+    } catch (e) {
+    console.error('Error during submission:', e);
+    showSnackbar(e.response?.data?.message || SNACKBAR_MESSAGES.error, 'error');
+  } finally {
+    setIsTrainingSubmitting(false);
+  }
+}, [validateForm, formData, branchMaster, departmentMaster, staffCategories, trainingTopics, trainingTypes, isPlanned, API_BASE_URL, showSnackbar, fetchTrainingData, handleAddModalClose, handleOpenSnackbar,isTrainingSubmitting]);
 
   // ─── Mapped training data (admin) — must be declared before handleEditTraining ──
 
@@ -3023,7 +3031,13 @@ const handleConfirmSubmit = useCallback(async () => {
               </DialogContent>
               <DialogActions sx={{ justifyContent: 'center', padding: '12px' }}>
                 <Button onClick={handleAddModalClose} sx={{ backgroundColor: 'orange', color: 'black', fontSize: '0.8rem', padding: '8px 14px', textTransform: 'none', borderRadius: 2, '&:hover': { backgroundColor: '#FFBF00' } }}>Cancel</Button>
-                <Button onClick={handleModalSubmit} variant="contained" sx={{ backgroundColor: '#1A005D', color: 'white', fontSize: '0.8rem', padding: '8px 14px', textTransform: 'none', borderRadius: 2, '&:hover': { backgroundColor: '#1A005F' } }}>Submit</Button>
+                <Button
+                  onClick={handleModalSubmit}
+                  variant="contained"
+                  disabled={isTrainingSubmitting}
+                  sx={{ backgroundColor: '#1A005D', color: 'white', fontSize: '0.8rem', padding: '8px 14px', textTransform: 'none', borderRadius: 2, '&:hover': { backgroundColor: '#1A005F' } }}>
+                    {isTrainingSubmitting ? 'Submitting...' : 'Submit'}
+                    </Button>
               </DialogActions>
             </Dialog>
 

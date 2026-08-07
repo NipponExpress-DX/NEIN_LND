@@ -2,13 +2,23 @@ import { useEffect, useState, useMemo } from "react";
 import { 
   Box, Tabs, Tab, Grid, MenuItem, Select, TextField, Button,
   Card, CardContent, Typography, IconButton, Divider,
-  Paper, Container, useTheme, useMediaQuery, Menu, Tooltip
+  Paper, Container, useTheme, useMediaQuery, Menu, Tooltip,
+  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, CircularProgress
 } from "@mui/material";
+
+import { AutoAwesome, ArrowForward, Event } from "@mui/icons-material";
+
+import { Chip } from "@mui/material";
+import { CheckCircle, Cancel, Schedule } from "@mui/icons-material";
+import { Close } from "@mui/icons-material";
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, 
   Tooltip as RechartsTooltip, Legend, LineChart, 
   Line, CartesianGrid, Area, AreaChart, ResponsiveContainer
 } from "recharts";
+import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
+import { Bolt, AccessTime, Insights } from "@mui/icons-material";
+
 import axios from "axios";
 import { 
   CalendarToday, FileCopy, TrendingUp, 
@@ -28,7 +38,6 @@ import '../../../css/Admincss/Dashboard/Loader.css';
 const Dashboard = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [dataProgress, setDataProgress] = useState([]);
-  const [dataDepartmentTraining, setDataDepartmentTraining] = useState([]);
   const [dataUpcoming, setDataUpcoming] = useState([]);
   const [dataLearningComparison, setDataLearningComparison] = useState(null);
   const [userRole, setUserRole] = useState(null);  
@@ -46,30 +55,133 @@ const Dashboard = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const rolePermissions = JSON.parse(sessionStorage.getItem("rolePermissions")) || {};
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [detailsTitle, setDetailsTitle] = useState('');
+  const [detailsData, setDetailsData] = useState([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
-  const [trainingEffectiveness, setTrainingEffectiveness] = useState(null);
+  const [upcomingPreview, setUpcomingPreview] = useState([]);
+  const [upcomingLoading, setUpcomingLoading] = useState(true);
+
+ const fetchTrainingDetails = async (type, title) => {
+    setDetailsTitle(title);
+    setDetailsModalOpen(true);
+    setDetailsLoading(true);
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/dashboard/trainee_training_details`,
+        { userid: userId, type }
+      );
+      setDetailsData(response.data.trainings || []);
+    } catch (error) {
+      console.error("Error fetching training details:", error);
+      setDetailsData([]);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+// Helper: normalize to local midnight, then diff in whole days — avoids
+// time-of-day/timezone rounding errors that were causing wrong "Today" labels
+const getDaysAway = (dateStr) => {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  const today = new Date();
+  const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((targetMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+};
+
+const getDayChipLabel = (daysAway) => {
+  if (daysAway === null) return 'Upcoming';
+  if (daysAway < 0) return `Overdue ${Math.abs(daysAway)}d`;
+  if (daysAway === 0) return 'Today';
+  if (daysAway === 1) return 'Tomorrow';
+  return `In ${daysAway}d`;
+};
+
+
+const fetchUpcomingPreview = async () => {
+  setUpcomingLoading(true);
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/dashboard/trainee_training_details`,
+      { userid: userId, type: 'assigned' }
+    );
+    const trainings = response.data.trainings || [];
+    // Drop sessions whose date has already passed — "assigned" should only mean upcoming
+    const notOverdue = trainings.filter(t => {
+      if (!t.session_date) return true; // keep date-TBD sessions
+      const daysAway = getDaysAway(t.session_date);
+      return daysAway === null || daysAway >= 0;
+    });
+    setUpcomingPreview(notOverdue);
+  } catch (error) {
+    console.error("Error fetching upcoming preview:", error);
+    setUpcomingPreview([]);
+  } finally {
+    setUpcomingLoading(false);
+  }
+};
+const sortedUpcoming = [...upcomingPreview].sort((a, b) => {
+  if (!a.session_date) return 1;
+  if (!b.session_date) return -1;
+  return new Date(a.session_date) - new Date(b.session_date);
+});
 
 useEffect(() => {
-  if (userId) {  
+  if (userId) {
     fetchData();
-    fetchDepartmentTraining();
     fetchUpcomingTraining();
     fetchLearningAnalytics();
-    fetchTrainingEffectiveness(); // Add this new function call
+    fetchUpcomingPreview();
   }
 }, [userId]);
 
-const fetchTrainingEffectiveness = async () => {
-  try {
-    const response = await axios.post(
-      `${API_BASE_URL}/dashboard/TrainingEffectivenessAllMeasures`,
-      { userid: userId }
-    );
-    setTrainingEffectiveness(response.data);
-  } catch (error) {
-    console.error("Error fetching training effectiveness:", error);
-    setTrainingEffectiveness(null);
+
+const getInsightMessage = () => {
+  const attended = dataProgress.find(d => d.name === "Present")?.value || 0;
+  const absent = dataProgress.find(d => d.name === "Absent")?.value || 0;
+  const upcoming = dataProgress.find(d => d.name === "Assigned Trainings")?.value || 0;
+  const total = attended + absent;
+  const rate = total > 0 ? Math.round((attended / total) * 100) : null;
+
+  if (upcoming > 0 && rate !== null) {
+    return `You've completed ${rate}% of your past trainings, with ${upcoming} more coming up.`;
   }
+  if (upcoming > 0) {
+    return `You have ${upcoming} upcoming training${upcoming > 1 ? 's' : ''} on your calendar.`;
+  }
+  if (rate !== null) {
+    return `You've completed ${rate}% of your assigned trainings so far.`;
+  }
+  return `No training activity yet — check back soon.`;
+};
+
+const getNextSessionCountdown = () => {
+  const dated = [...upcomingPreview]
+    .filter(t => t.session_date)
+    .sort((a, b) => new Date(a.session_date) - new Date(b.session_date));
+  if (dated.length === 0) return null;
+  const next = dated[0];
+  return { training: next, diffDays: getDaysAway(next.session_date) };
+};
+
+
+const getCompletionRate = () => {
+  const attended = dataProgress.find(d => d.name === "Present")?.value || 0;
+  const absent = dataProgress.find(d => d.name === "Absent")?.value || 0;
+  const total = attended + absent;
+  return total > 0 ? Math.round((attended / total) * 100) : 0;
+};
+
+const getStatusChip = (item) => {
+  if (item.attendance_status === 1) {
+    return <Chip icon={<CheckCircle sx={{ fontSize: 16 }} />} label="Attended" size="small" sx={{ backgroundColor: 'rgba(142,196,0,0.15)', color: '#5a8000', fontWeight: 600 }} />;
+  }
+  if (item.attendance_status === 0) {
+    return <Chip icon={<Cancel sx={{ fontSize: 16 }} />} label="Absent" size="small" sx={{ backgroundColor: 'rgba(244,94,109,0.15)', color: '#F45E6D', fontWeight: 600 }} />;
+  }
+  return <Chip icon={<Schedule sx={{ fontSize: 16 }} />} label="Upcoming" size="small" sx={{ backgroundColor: 'rgba(67,97,238,0.15)', color: '#4361EE', fontWeight: 600 }} />;
 };
 
   const hasAccess = (section, subSection, permissionType) => {
@@ -118,15 +230,28 @@ const fetchTrainingEffectiveness = async () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (userId) {  
-      fetchData();
-      fetchDepartmentTraining();
-      fetchUpcomingTraining();
-      fetchLearningAnalytics();
-    }
-  }, [userId]); 
 
+
+//   const checkDashboardPermissions = (permissions) => {
+//   if (!permissions || !permissions.Dashboard) return {
+//     showUserDashboard: true,
+//     showAdminDashboard: false,
+//     showBranchDashboard: false,
+//     showDepartmentDashboard: false
+//   };
+
+//   const hasDepartment = permissions.Dashboard['Deparatment-Dashboard']?.View === 1;
+//   const hasBranch = permissions.Dashboard['Branch-Dashboard']?.View === 1;
+//   const hasUser = permissions.Dashboard['User-Dashboard']?.View === 1;
+
+//   return {
+//     showUserDashboard: hasUser,
+//     showDepartmentDashboard: hasDepartment,
+//     showBranchDashboard: hasBranch,
+//     // Show Admin tab only if user has ALL three dashboards
+//     showAdminDashboard: hasUser && hasDepartment && hasBranch
+//   };
+// };
   const checkDashboardPermissions = (permissions) => {
   if (!permissions || !permissions.Dashboard) return {
     showUserDashboard: true,
@@ -141,13 +266,13 @@ const fetchTrainingEffectiveness = async () => {
 
   return {
     showUserDashboard: hasUser,
-    showDepartmentDashboard: hasDepartment,
-    showBranchDashboard: hasBranch,
-    // Show Admin tab only if user has ALL three dashboards
+    showDepartmentDashboard: false, // hidden for everyone
+    showBranchDashboard: false,     // hidden for everyone
+    // Admin tab logic unchanged — still gated on the underlying (real) permissions,
+    // not the display flags above, so Admin visibility doesn't break
     showAdminDashboard: hasUser && hasDepartment && hasBranch
   };
 };
-  
   const [dashboardPermissions, setDashboardPermissions] = useState({
     showUserDashboard: true,
     showAdminDashboard: false,
@@ -264,24 +389,6 @@ const fetchTrainingEffectiveness = async () => {
     }
   };
 
-  const fetchDepartmentTraining = async () => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/dashboard/department_assigned_to_user_attended`, {
-        userid: userId
-      });
-  
-      if (response.data) {
-        setDataDepartmentTraining({
-          department_conducted_count: Number(response.data.department_conducted_count) || 0,
-          Assign_count: Number(response.data.Assign_count) || 0,
-          present_count: Number(response.data.present_count) || 0,
-          absent_count: Number(response.data.absent_count) || 0
-        });
-      }
-    } catch (error) {
-      console.error("API request failed:", error.message);
-    }
-  };
 
   const fetchUpcomingTraining = async () => {
     try {
@@ -522,10 +629,10 @@ const fetchTrainingEffectiveness = async () => {
                 whiteSpace: 'nowrap'
               }}>
                 {tabIndex === 0 ? empName : 
-       tabIndex === 1 ? deptName : 
-       tabIndex === 2 ? branchName : 
-       "Admin"} {/* Admin Activities */}
-    </Typography>
+                    tabIndex === 1 ? deptName : 
+                    tabIndex === 2 ? branchName : 
+                    "Admin"} {/* Admin Activities */}
+                  </Typography>
             </Box>
           )}
         </Box>
@@ -690,617 +797,442 @@ const fetchTrainingEffectiveness = async () => {
               </Tabs>
             </Paper>
             {/* User View */}
-            {tabIndex === 0 && (
-              <Box>
-                {/* Summary Stats Row */}
-                {/* Summary Stats Row - Modified for 4 cards in one row */}
-        <Grid container spacing={1} sx={{ mb: 1 }}>
-          {/* Each card now takes 3 columns (12/4=3) */}
-          <Grid item xs={12} sm={6} md={3}>
-            <div  style={{ cursor: 'pointer' }}>
-              <StatCard 
-                title="Assigned Trainings Count" 
-                value={dataProgress.find(d => d.name === "Assigned Trainings")?.value || 0}
-                icon={<TeachingIcon style={{ fill: COLORS.primary, width: 24, height: 10 }} />}
-                color={COLORS.primary}
-              />
-            </div>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <div onClick={() => navigate('/admindashboard/dashboard')} style={{ cursor: 'pointer' }}>
-              <StatCard 
-                title="Attended Trainings Count" 
-                value={dataProgress.find(d => d.name === "Present")?.value || 0}
-                icon={<GraduateIcon style={{ fill: COLORS.quaternary, width: 24, height: 10 }} />}
-                color={COLORS.secondary}
-                // subtitle={`${dataDepartmentTraining.Assign_count > 0 
-                //   ? ((dataDepartmentTraining.present_count / dataDepartmentTraining.Assign_count) * 100).toFixed(1)
-                //   : 0}% Attendance Rate`}
-              />
-            </div>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Tooltip 
-              title={
-                pendingFeedbackSessions.length === 0 
-                  ? "No pending feedbacks" 
-                  : `Click to complete ${pendingFeedbackSessions.length} pending feedback${pendingFeedbackSessions.length > 1 ? 's' : ''}`
-              }
-            >
-              <div 
-                onClick={handleFeedbackClick} 
-                style={{ 
-                  cursor: pendingFeedbackSessions.length > 0 ? 'pointer' : 'default',
-                  opacity: pendingFeedbackSessions.length > 0 ? 1 : 0.7,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <StatCard 
-                  title="Pending Feedbacks Count"    
-                  value={dataProgress.find(d => d.name === "Pending Feedbacks")?.value || 0}
-                  icon={<FeedbackIcon style={{ fill: COLORS.warning, width: 24, height: 10 }} />}
-                  color={pendingFeedbackSessions.length > 0 ? COLORS.warning : COLORS.disabled}
-                />
-              </div>
-            </Tooltip>
-            
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={() => handleMenuClose()}
-              PaperProps={{
-                style: {                         
-                  width: '30ch',
-                },
-              }}
-            >
-              {pendingFeedbackSessions.map((session, index) => (
-                <MenuItem 
-                  key={index} 
-                  onClick={() => handleMenuClose(session)}
-                  sx={{
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5'
-                    }
-                  }}
-                >
-                  Feedback form {index + 1}
-                </MenuItem>
-              ))}
-            </Menu>
-          </Grid>
+         {tabIndex === 0 && (
+            <Box>
+              {/* Hero: AI Insight + Completion Ring */}
+              <Paper elevation={0} sx={{
+                mb: 3, p: { xs: 2.5, md: 3.5 }, borderRadius: '24px',
+                background: 'linear-gradient(135deg, #0F0140 0%, #1A005D 35%, #4361EE 75%, #6C63FF 100%)',
+                position: 'relative', overflow: 'hidden',
+                boxShadow: '0 20px 50px rgba(67,97,238,0.3)',
+              }}>
+                {/* decorative glow blobs */}
+                <Box sx={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(142,196,0,0.25)', filter: 'blur(50px)' }} />
+                <Box sx={{ position: 'absolute', bottom: -80, left: 100, width: 220, height: 220, borderRadius: '50%', background: 'rgba(253,118,203,0.2)', filter: 'blur(60px)' }} />
 
-          <Grid item xs={12} sm={6} md={3}>
-            <div onClick={() => navigate('/admindashboard/dashboard')} style={{ cursor: 'pointer' }}>
-              <StatCard 
-                title="Absent Trainings Count" 
-                value={dataProgress.find(d => d.name === "Absent")?.value || 0}
-                icon={<NoEntryIcon style={{ fill: COLORS.quaternary, width: 24, height: 10 }} />}
-                color={COLORS.error}
-              />
-            </div>
-          </Grid>
-        </Grid>                       
-                {/* Charts Row */}
-                <Grid container spacing={3} sx={{ mb: 4 }}>
-                  {/* Learning Progress Chart */}
-                  <Grid item xs={12} md={7}>
-                   
-                      <DashboardCard 
-                        title="Personal Learning Analytics"
-                        subtitle="Training sessions and hours comparison"
-                        icon={<TrendingUp sx={{ color: "#1A005D", fontSize: '1.2rem' }} />}
-                        chart={
-                          <ResponsiveContainer width="100%" height={260}>
-                            <BarChart 
-                              data={dataLearningComparison} 
-                              margin={{top: 5, right: 15, left: 0, bottom: 5}}
-                            >
-                              <CartesianGrid 
-                                strokeDasharray="2 2" 
-                                vertical={false} 
-                                stroke="#E0E0E0" 
-                              />
-                              
-                              <XAxis 
-                                dataKey="name" 
-                                axisLine={{ stroke: "#E0E0E0" }} 
-                                tick={{ fill: "#5A5A72", fontSize: 10 }}
-                                tickLine={false}
-                              />
-                              
-                              <YAxis 
-                                yAxisId="left"
-                                orientation="left"
-                                tick={{ fill: "#5A5A72", fontSize: 10 }} 
-                                axisLine={{ stroke: "#E0E0E0" }}
-                                tickLine={false}
-                                label={{ 
-                                  value: 'Trainings', 
-                                  angle: -90, 
-                                  position: 'insideLeft',
-                                  fill: "#5A5A72",
-                                  fontSize: 12
-                                }}
-                              />
-                              
-                              <YAxis 
-                                yAxisId="right"
-                                orientation="right"
-                                tick={{ fill: "#5A5A72", fontSize: 10 }} 
-                                axisLine={{ stroke: "#E0E0E0" }}
-                                tickLine={false}
-                                label={{ 
-                                  value: 'Hours', 
-                                  angle: 90, 
-                                  position: 'insideRight',
-                                  fill: "#5A5A72",
-                                  fontSize: 12
-                                }}
-                              />
-                              
-                              <RechartsTooltip 
-                                contentStyle={{
-                                  background: "#FFFFFF",
-                                  border: "1px solid #E0E0E0",
-                                  borderRadius: "6px",
-                                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                                  color: "#1A005D",
-                                  fontSize: "12px"
-                                }} 
-                              />
-                              
-                              <Legend 
-                                wrapperStyle={{ 
-                                  paddingTop: 10,
-                                  paddingLeft: 10
-                                }}
-                                iconType="circle"
-                                iconSize={8}
-                                formatter={(value) => (
-                                  <span style={{ color: "#5A5A72", fontSize: 11 }}>
-                                    {value}
-                                  </span>
-                                )}
-                              />
-                              
-                              <Bar 
-                                yAxisId="left"
-                                dataKey="Assigned" 
-                                name="Assigned"
-                                fill="#1A005D" 
-                                radius={[6, 6, 0, 0]}
-                                barSize={30}
-                              />
-                              
-                              <Bar 
-                                yAxisId="left"
-                                dataKey="Attended" 
-                                name="Attended"
-                                fill="#8EC400" 
-                                radius={[6, 6, 0, 0]}
-                                barSize={30}
-                              />
-                              
-                              <Line 
-                                yAxisId="right"
-                                type="monotone" 
-                                dataKey="Hours" 
-                                name="Hours"
-                                stroke="#FD76CB" 
-                                strokeWidth={2}
-                                dot={{ fill: "#FD76CB", strokeWidth: 2, r: 4 }}
-                                activeDot={{ r: 6 }}
-                              />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        }
-                      />
-                  </Grid>
-                  
-                  {/* Department Training Summary */}
-                  <Grid item xs={12} md={5}>
-                    <DashboardCard 
-                      title="My Department Insights"
-                      subtitle="Training Summary (Department-wise) with My Attendance %"
-                      icon={<Assessment sx={{ color: "#1A005D" }} />}
-                      chart={
-                        <Box sx={{ pt: 2 }}>
-                          <Grid container spacing={2} sx={{ mb: 1 }}>
-                            <Grid item xs={6}>
-                              <Box sx={{ 
-                                p: 2, 
-                                borderRadius: 2, 
-                                backgroundColor: "rgba(26, 0, 93, 0.05)",
-                                textAlign: 'center',
-                                borderLeft: "4px solid #1A005D",
-                              }}>
-                                <Typography variant="body2" sx={{ 
-                                  color: "#5A5A72", 
-                                  mb: 1,
-                                  fontWeight: 500
-                                }}>
-                                  Department Conducted
-                                </Typography>
-                                <Typography variant="h4" sx={{ 
-                                  color: "#1A005D",
-                                  fontWeight: 700,
-                                  fontSize: "1.75rem"
-                                }}>
-                                  {dataDepartmentTraining.department_conducted_count || 0}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Box sx={{ 
-                                p: 2, 
-                                borderRadius: 2, 
-                                backgroundColor: "rgba(142, 196, 0, 0.05)",
-                                textAlign: 'center',
-                                borderLeft: "4px solid #8EC400",
-                              }}>
-                                <Typography variant="body2" sx={{ 
-                                  color: "#5A5A72",
-                                  mb: 1,
-                                  fontWeight: 500
-                                }}>
-                                  Overall Attendance Rate
-                                </Typography>
-                                <Typography variant="h4" sx={{ 
-                                  color: "#8EC400",
-                                  fontWeight: 700,
-                                  fontSize: "1.75rem"
-                                }}>
-                                  {dataDepartmentTraining.Assign_count > 0 
-                                    ? `${((dataDepartmentTraining.present_count / dataDepartmentTraining.Assign_count) * 100).toFixed(0)}%` 
-                                    : '0%'}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          </Grid>
-                          
-                          <Box sx={{ mb: 3, px: 1 }}>
-                            <Box sx={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              mb: 1.5,
-                              alignItems: 'center'
-                            }}>
-                              <Typography variant="body2" sx={{ 
-                                color: "#1A005D",
-                                fontWeight: 500,
-                                fontSize: "0.85rem"
-                              }}>
-                                Combined Attendance Overview
-                              </Typography>
-                              
-                            </Box>
-                            <Box sx={{ 
-                              width: '100%', 
-                              height: 10, 
-                              backgroundColor: "rgba(26, 0, 93, 0.1)",
-                              borderRadius: 5,
-                              overflow: 'hidden',
-                            }}>
-                              <Box sx={{ 
-                                width: dataDepartmentTraining.Assign_count > 0 
-                                  ? `${(dataDepartmentTraining.present_count / dataDepartmentTraining.Assign_count * 100)}%` 
-                                  : '0%',
-                                height: '100%',
-                                background: "linear-gradient(90deg, #1A005D 0%, #8EC400 100%)",
-                                borderRadius: 5,
-                              }} />
-                            </Box>
-                          </Box>
-                          
-                          <Box sx={{ 
-                            display: 'flex', 
-                            justifyContent: 'center', 
-                            gap: 3,
-                            flexWrap: 'wrap'
-                          }}>
-                            {[
-                              { label: 'Assigned', value: dataDepartmentTraining.Assign_count || 0, color: "#1A005D" },
-                              { label: 'Present', value: dataDepartmentTraining.present_count || 0, color: "#8EC400" },
-                              { label: 'Absent', value: dataDepartmentTraining.absent_count || 0, color: "#FF5252" }
-                            ].map((item, index) => (
-                              <Box key={index} sx={{ 
-                                textAlign: 'center',
-                                minWidth: 80,
-                                px: 1.5,
-                                py: 1,
-                                borderRadius: 2,
-                                backgroundColor: "rgba(26, 0, 93, 0.03)",
-                              }}>
-                                <Box sx={{ 
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: 1,
-                                  mb: 0.5
-                                }}>
-                                  <Box sx={{ 
-                                    width: 10, 
-                                    height: 10, 
-                                    borderRadius: '50%', 
-                                    backgroundColor: item.color,
-                                  }} />
-                                  <Typography variant="body2" sx={{ 
-                                    color: "#5A5A72",
-                                    fontWeight: 500,
-                                    fontSize: "0.8rem"
-                                  }}>
-                                    {item.label}
-                                  </Typography>
-                                </Box>
-                                <Typography variant="h6" sx={{ 
-                                  color: item.color, 
-                                  fontWeight: 700,
-                                  fontSize: "1.25rem"
-                                }}>
-                                  {item.value}
-                                </Typography>
-                              </Box>
-                            ))}
-                          </Box>
+                <Grid container spacing={3} alignItems="center" sx={{ position: 'relative', zIndex: 1 }}>
+                  <Grid item xs={12} md={8}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                      <Box sx={{
+                        backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '10px',
+                        width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <AutoAwesome sx={{ color: '#8EC400', fontSize: 18 }} />
+                      </Box>
+                      <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                        AI Learning Insight
+                      </Typography>
+                    </Box>
+
+                    <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: { xs: '1.15rem', md: '1.4rem' }, lineHeight: 1.4, mb: 2 }}>
+                      {getInsightMessage()}
+                    </Typography>
+
+                    {(() => {
+                      const countdown = getNextSessionCountdown();
+                      return countdown ? (
+                        <Box sx={{
+                          display: 'inline-flex', alignItems: 'center', gap: 1,
+                          backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: '30px',
+                          px: 2, py: 0.8, backdropFilter: 'blur(10px)'
+                        }}>
+                          <AccessTime sx={{ color: '#FFD166', fontSize: 18 }} />
+                          <Typography sx={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>
+                            {countdown.diffDays <= 0 ? 'Training today' : `Next up in ${countdown.diffDays} day${countdown.diffDays > 1 ? 's' : ''}`}
+                            {' — '}{countdown.training.training_name || `Session ${countdown.training.session_no}`}
+                          </Typography>
                         </Box>
-                      }
-                    />
+                      ) : null;
+                    })()}
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                      <Box sx={{ position: 'relative', width: 110, height: 110 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadialBarChart 
+                            innerRadius="70%" outerRadius="100%" 
+                            data={[{ value: getCompletionRate(), fill: '#8EC400' }]} 
+                            startAngle={90} endAngle={-270}
+                          >
+                            <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                            <RadialBar background={{ fill: 'rgba(255,255,255,0.15)' }} dataKey="value" cornerRadius={20} />
+                          </RadialBarChart>
+                        </ResponsiveContainer>
+                        <Box sx={{
+                          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '1.4rem', lineHeight: 1 }}>
+                            {getCompletionRate()}%
+                          </Typography>
+                          <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.65rem', fontWeight: 600 }}>
+                            COMPLETION
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
                   </Grid>
                 </Grid>
-                
-                {/* Bottom Row */}
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={5}>
-                    <DashboardCard 
-                      title="Upcoming Training Sessions"
-                      subtitle="Overview of planned & assigned sessions"
-                      icon={<CalendarToday sx={{ color: COLORS.quaternary }} />}
-                      chart={
-                        <ResponsiveContainer width="100%" height={250}>
-                          <PieChart>
-                            <Pie 
-                              data={dataUpcoming} 
-                              cx="50%" 
-                              cy="50%" 
-                              outerRadius={80}
-                              innerRadius={50}
-                              paddingAngle={3}
-                              dataKey="value"
-                              labelLine={false}
-                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            >
-                              {dataUpcoming.map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={index === 0 ? COLORS.primary : COLORS.quaternary} 
-                                  stroke={COLORS.cardBackground}
-                                  strokeWidth={2}
-                                />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip 
-                              contentStyle={{
-                                backgroundColor: COLORS.cardBackground,
-                                border: `1px solid ${COLORS.borderColor}`,
-                                borderRadius: '8px',
-                                boxShadow: `0 4px 12px ${COLORS.shadow}`,
-                                padding: '8px 12px'
-                              }} 
-                              formatter={(value, name) => [`${value} Sessions`, name]}
-                            />
-                            <Legend 
-                              verticalAlign="bottom" 
-                              height={36} 
-                              iconType="circle"
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      }
+              </Paper>
+
+              {/* Summary Stats Row */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <div onClick={() => fetchTrainingDetails('assigned', 'Assigned Trainings')} style={{ cursor: 'pointer' }}>
+                    <StatCard 
+                      title="Assigned Trainings" 
+                      value={dataProgress.find(d => d.name === "Assigned Trainings")?.value || 0}
+                      icon={<TeachingIcon style={{ fill: COLORS.primary, width: 24, height: 10 }} />}
+                      color={COLORS.primary}
+                      subtitle="Upcoming • Click to view"
                     />
-                  </Grid>
-                  
-                  <Grid item xs={12} md={7}>
-                      <DashboardCard 
-                        title="Training Effectiveness"
-                        subtitle="Detailed analysis of your training outcomes"
-                        icon={<Assessment sx={{ color: "#1A005D", fontSize: '1.2rem' }} />}
-                        chart={
-                          <Box sx={{ width: '100%', height: 300 }}>
-                            {trainingEffectiveness ? (
-                              <Grid container spacing={2} sx={{ height: '100%', alignItems: 'stretch' }}>
-                                {/* Total Trainings */}
-                                <Grid item xs={12} sm={3}>
-                                  <Paper elevation={0} sx={{ 
-                                    height: '89%',
-                                    p: 2,
-                                    borderRadius: '12px',
-                                    backgroundColor: 'rgba(26, 0, 93, 0.05)',
-                                    borderLeft: '4px solid #1A005D',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'center'
-                                  }}>
-                                    <Typography variant="h6" sx={{ 
-                                      color: "#5A5A72",
-                                      fontWeight: 500,
-                                      mb: 1,
-                                      textAlign: 'center'
-                                    }}>
-                                      Total Trainings
-                                    </Typography>
-                                    <Typography variant="h3" sx={{ 
-                                      color: "#1A005D",
-                                      fontWeight: 700,
-                                      textAlign: 'center'
-                                    }}>
-                                      {trainingEffectiveness.total_trainings}
-                                    </Typography>
-                                  </Paper>
-                                </Grid>
+                  </div>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <div onClick={() => fetchTrainingDetails('attended', 'Attended Trainings')} style={{ cursor: 'pointer' }}>
+                    <StatCard 
+                      title="Attended Trainings" 
+                      value={dataProgress.find(d => d.name === "Present")?.value || 0}
+                      icon={<GraduateIcon style={{ fill: COLORS.quaternary, width: 24, height: 10 }} />}
+                      color={COLORS.secondary}
+                      subtitle="Completed • Click to view"
+                    />
+                  </div>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Tooltip 
+                    title={
+                      pendingFeedbackSessions.length === 0 
+                        ? "No pending feedbacks" 
+                        : `Click to complete ${pendingFeedbackSessions.length} pending feedback${pendingFeedbackSessions.length > 1 ? 's' : ''}`
+                    }
+                  >
+                    <div 
+                      onClick={handleFeedbackClick} 
+                      style={{ 
+                        cursor: pendingFeedbackSessions.length > 0 ? 'pointer' : 'default',
+                        opacity: pendingFeedbackSessions.length > 0 ? 1 : 0.7,
+                      }}
+                    >
+                      <StatCard 
+                        title="Pending Feedbacks"    
+                        value={dataProgress.find(d => d.name === "Pending Feedbacks")?.value || 0}
+                        icon={<FeedbackIcon style={{ fill: COLORS.warning, width: 24, height: 10 }} />}
+                        color={pendingFeedbackSessions.length > 0 ? COLORS.warning : COLORS.disabled}
+                        subtitle={pendingFeedbackSessions.length > 0 ? "Action needed" : "All caught up"}
+                      />
+                    </div>
+                  </Tooltip>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => handleMenuClose()}
+                    PaperProps={{ style: { width: '30ch' } }}
+                  >
+                    {pendingFeedbackSessions.map((session, index) => (
+                      <MenuItem 
+                        key={index} 
+                        onClick={() => handleMenuClose(session)}
+                        sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}
+                      >
+                        Feedback form {index + 1}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <div onClick={() => fetchTrainingDetails('absent', 'Absent Trainings')} style={{ cursor: 'pointer' }}>
+                    <StatCard 
+                      title="Absent Trainings" 
+                      value={dataProgress.find(d => d.name === "Absent")?.value || 0}
+                      icon={<NoEntryIcon style={{ fill: COLORS.quaternary, width: 24, height: 10 }} />}
+                      color={COLORS.error}
+                      subtitle="Missed • Click to view"
+                    />
+                  </div>
+                </Grid>
+              </Grid>
 
-                                {/* Effectiveness Metrics */}
-                                {[
-                                  { 
-                                    key: 'effectiveness_a',
-                                    title: 'Personnel Discussion', 
-                                    color: '#1A005D',
-                                    icon: <Assessment sx={{ fontSize: 16 }} />
-                                  },
-                                  { 
-                                    key: 'effectiveness_b',
-                                    title: 'Demonstration / Test', 
-                                    color: '#8EC400',
-                                    icon: <Assessment sx={{ fontSize: 16 }} />
-                                  },
-                                  { 
-                                    key: 'effectiveness_c',
-                                    title: 'On-the-job Assessment', 
-                                    color: '#FD76CB',
-                                    icon: <Assessment sx={{ fontSize: 16 }} />
-                                  }
-                                ].map((item, index) => {
-                                  const effData = trainingEffectiveness[item.key];
-                                  return (
-                                    <Grid item xs={12} sm={3} key={index}>
-                                      <Paper elevation={0} sx={{ 
-                                        height: '89%',
-                                        p: 2,
-                                        borderRadius: '12px',
-                                        backgroundColor: `${item.color}08`,
-                                        border: `1px solid ${item.color}30`,
-                                        display: 'flex',
-                                        flexDirection: 'column'
-                                      }}>
-                                        {/* Title and Icon */}
-                                        <Box sx={{ 
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 1,
-                                          mb: 2
-                                        }}>
-                                          <Box sx={{ 
-                                            backgroundColor: `${item.color}20`,
-                                            borderRadius: '6px',
-                                            p: 0.5,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                          }}>
-                                            {item.icon}
-                                          </Box>
-                                          <Typography variant="subtitle2" sx={{ 
-                                            color: item.color,
-                                            fontWeight: 600
-                                          }}>
-                                            {item.title}
-                                          </Typography>
-                                        </Box>
+              {/* Upcoming Sessions - horizontal scroll cards */}
+              <Paper elevation={0} sx={{
+                mb: 3, borderRadius: '20px', p: 2.5,
+                backgroundColor: COLORS.cardBackground,
+                boxShadow: `0 4px 20px ${COLORS.shadow}`,
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ 
+                      background: 'linear-gradient(135deg, #4361EE, #8EC400)', borderRadius: '12px',
+                      width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <Event sx={{ color: '#fff', fontSize: 20 }} />
+                    </Box>
+                    <Box>
+                      <Typography sx={{ color: '#1A005D', fontWeight: 700, fontSize: '1.05rem' }}>
+                        Upcoming Sessions
+                      </Typography>
+                      <Typography sx={{ color: '#8EC400', fontSize: '0.8rem' }}>
+                        {upcomingPreview.length} on your calendar
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {upcomingPreview.length > 0 && (
+                    <Button 
+                      size="small" 
+                      endIcon={<ArrowForward sx={{ fontSize: 16 }} />}
+                      onClick={() => fetchTrainingDetails('assigned', 'Assigned Trainings')}
+                      sx={{ color: COLORS.primary, textTransform: 'none', fontWeight: 600 }}
+                    >
+                      View all
+                    </Button>
+                  )}
+                </Box>
 
-                                        {/* Main Percentage */}
-                                        <Box sx={{ 
-                                          textAlign: 'center',
-                                          mb: 2,
-                                          flexGrow: 1,
-                                          display: 'flex',
-                                          flexDirection: 'column',
-                                          justifyContent: 'center'
-                                        }}>
-                                          <Typography variant="h3" sx={{ 
-                                            color: item.color,
-                                            fontWeight: 700,
-                                            lineHeight: 1
-                                          }}>
-                                            {effData.percentage}%
-                                          </Typography>
-                                          <Typography variant="caption" sx={{ 
-                                            color: "#5A5A72",
-                                            fontWeight: 500
-                                          }}>
-                                            Success Rate
-                                          </Typography>
-                                        </Box>
-
-                                        {/* Count Breakdown */}
-                                        <Box sx={{ 
-                                          display: 'flex',
-                                          justifyContent: 'space-between',
-                                          gap: 1,
-                                          mt: 'auto'
-                                        }}>
-                                          {/* Positive Count */}
-                                          <Box sx={{ 
-                                            backgroundColor: `${item.color}15`,
-                                            borderRadius: '8px',
-                                            p: 1,
-                                            flex: 1,
-                                            textAlign: 'center'
-                                          }}>
-                                            <Typography variant="body1" sx={{ 
-                                              color: item.color,
-                                              fontWeight: 700,
-                                              mb: 0.5
-                                            }}>
-                                              {effData.yes_count}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ 
-                                              color: "#5A5A72",
-                                              fontWeight: 500,
-                                              fontSize: '0.7rem'
-                                            }}>
-                                              Positive
-                                            </Typography>
-                                          </Box>
-
-                                          {/* Negative Count */}
-                                          <Box sx={{ 
-                                            backgroundColor: 'rgba(244, 94, 109, 0.1)',
-                                            borderRadius: '8px',
-                                            p: 1,
-                                            flex: 1,
-                                            textAlign: 'center'
-                                          }}>
-                                            <Typography variant="body1" sx={{ 
-                                              color: '#F45E6D',
-                                              fontWeight: 700,
-                                              mb: 0.5
-                                            }}>
-                                              {effData.no_count}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ 
-                                              color: "#5A5A72",
-                                              fontWeight: 500,
-                                              fontSize: '0.7rem'
-                                            }}>
-                                              Needs Work
-                                            </Typography>
-                                          </Box>
-                                        </Box>
-                                      </Paper>
-                                    </Grid>
-                                  );
-                                })}
-                              </Grid>
-                            ) : (
-                              <Box sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'center', 
-                                alignItems: 'center', 
-                                height: '100%',
-                                color: "#5A5A72"
-                              }}>
-                                Loading effectiveness data...
-                              </Box>
-                            )}
+                {upcomingLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                    <CircularProgress size={28} sx={{ color: COLORS.primary }} />
+                  </Box>
+                ) : upcomingPreview.length === 0 ? (
+                  <Box sx={{ py: 3, textAlign: 'center' }}>
+                    <Typography sx={{ color: COLORS.textLight }}>No upcoming trainings right now.</Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 6 }, '&::-webkit-scrollbar-thumb': { backgroundColor: '#E2E8F0', borderRadius: 3 } }}>
+                   {sortedUpcoming.map((item, idx) => {
+                      const daysAway = getDaysAway(item.session_date);
+                      const isOverdue = daysAway !== null && daysAway < 0;
+                      return (
+                        <Paper key={idx} elevation={0} sx={{
+                          p: 2, borderRadius: '16px', minWidth: 240, flexShrink: 0,
+                          border: `1px solid ${COLORS.borderColor}`,
+                          background: idx === 0 && !isOverdue
+                            ? 'linear-gradient(135deg, rgba(67,97,238,0.08) 0%, rgba(142,196,0,0.08) 100%)' 
+                            : '#fff',
+                          opacity: isOverdue ? 0.7 : 1,
+                          transition: 'transform 0.2s',
+                          '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 6px 16px ${COLORS.shadow}` }
+                        }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Chip 
+                              label={getDayChipLabel(daysAway)} 
+                              size="small" 
+                              sx={{ 
+                                backgroundColor: isOverdue ? 'rgba(244,94,109,0.15)' : (idx === 0 ? '#4361EE' : 'rgba(67,97,238,0.12)'), 
+                                color: isOverdue ? COLORS.error : (idx === 0 ? '#fff' : COLORS.primary), 
+                                fontWeight: 700 
+                              }} 
+                            />
+                            {idx === 0 && !isOverdue && <Bolt sx={{ color: '#FFD166', fontSize: 18 }} />}
                           </Box>
+                          <Typography sx={{ fontWeight: 700, color: '#1A005D', fontSize: '0.92rem', mb: 0.5 }}>
+                            {item.training_name || `Training #${item.planing_id}`}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: COLORS.textMedium }}>
+                            {item.session_date ? new Date(item.session_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date TBD'}
+                            {item.from_time && ` • ${item.from_time.slice(0,5)}`}
+                          </Typography>
+                        </Paper>
+                      );
+                    })}
+                  </Box>
+                )}
+              </Paper>
+
+              {/* Charts Row - redesigned */}
+                  <Grid container spacing={3} sx={{ mb: 3 }}>
+                    {/* Attendance Breakdown Donut */}
+                    <Grid item xs={12} md={6}>
+                      <DashboardCard 
+                        title="Attendance Breakdown"
+                        subtitle="Click a segment to see those trainings"
+                        icon={<Insights sx={{ color: "#1A005D", fontSize: '1.2rem' }} />}
+                        chart={
+                          (() => {
+                            const attended = dataProgress.find(d => d.name === "Present")?.value || 0;
+                            const absent = dataProgress.find(d => d.name === "Absent")?.value || 0;
+                            const upcoming = dataProgress.find(d => d.name === "Assigned Trainings")?.value || 0;
+                            const total = attended + absent + upcoming;
+                            const breakdownData = [
+                              { name: 'Attended', value: attended, color: COLORS.secondary, type: 'attended' },
+                              { name: 'Absent', value: absent, color: COLORS.error, type: 'absent' },
+                              { name: 'Upcoming', value: upcoming, color: COLORS.primary, type: 'assigned' },
+                            ].filter(d => d.value > 0);
+
+                            return total === 0 ? (
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 260 }}>
+                                <Typography sx={{ color: COLORS.textLight }}>No training data yet</Typography>
+                              </Box>
+                            ) : (
+                              <Box sx={{ position: 'relative' }}>
+                                <ResponsiveContainer width="100%" height={260}>
+                                  <PieChart>
+                                    <Pie 
+                                      data={breakdownData} 
+                                      cx="50%" cy="50%" 
+                                      outerRadius={95} innerRadius={65}
+                                      paddingAngle={4}
+                                      dataKey="value"
+                                      cursor="pointer"
+                                      onClick={(entry) => fetchTrainingDetails(entry.type, `${entry.name} Trainings`)}
+                                    >
+                                      {breakdownData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} stroke={COLORS.cardBackground} strokeWidth={3} />
+                                      ))}
+                                    </Pie>
+                                    <RechartsTooltip 
+                                      contentStyle={{ backgroundColor: COLORS.cardBackground, border: `1px solid ${COLORS.borderColor}`, borderRadius: '8px', boxShadow: `0 4px 12px ${COLORS.shadow}`, padding: '8px 12px' }}
+                                      formatter={(value, name) => [`${value} • click to view`, name]}
+                                    />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                                <Box sx={{
+                                  position: 'absolute', top: '38%', left: '50%', transform: 'translate(-50%, -50%)',
+                                  textAlign: 'center', pointerEvents: 'none'
+                                }}>
+                                  <Typography sx={{ color: '#1A005D', fontWeight: 800, fontSize: '1.6rem', lineHeight: 1 }}>
+                                    {total}
+                                  </Typography>
+                                  <Typography sx={{ color: COLORS.textLight, fontSize: '0.7rem', fontWeight: 600 }}>
+                                    TOTAL
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2.5, mt: 1, flexWrap: 'wrap' }}>
+                                  {breakdownData.map((d, i) => (
+                                    <Box key={i} onClick={() => fetchTrainingDetails(d.type, `${d.name} Trainings`)} sx={{ display: 'flex', alignItems: 'center', gap: 0.7, cursor: 'pointer' }}>
+                                      <Box sx={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: d.color }} />
+                                      <Typography sx={{ fontSize: '0.78rem', color: COLORS.textMedium, fontWeight: 600 }}>
+                                        {d.name} <span style={{ color: d.color, fontWeight: 700 }}>{d.value}</span>
+                                      </Typography>
+                                    </Box>
+                                  ))}
+                                </Box>
+                              </Box>
+                            );
+                          })()
                         }
                       />
                     </Grid>
-                </Grid>
-              </Box>
-            )}
+
+                    {/* Hours Invested Panel */}
+                    <Grid item xs={12} md={6}>
+                      <DashboardCard 
+                        title="Hours Invested"
+                        subtitle="Assigned vs. hours actually attended"
+                        icon={<AccessTime sx={{ color: "#1A005D", fontSize: '1.2rem' }} />}
+                        chart={
+                          (() => {
+                            const hoursRow = dataLearningComparison?.find(d => d.name === 'Hours');
+                            const assignedHrs = hoursRow?.Assigned || 0;
+                            const attendedHrs = hoursRow?.Attended || 0;
+                            const pct = assignedHrs > 0 ? Math.min(100, Math.round((attendedHrs / assignedHrs) * 100)) : 0;
+
+                            return (
+                              <Box sx={{ py: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                                  <Typography sx={{ fontWeight: 800, fontSize: '2.2rem', color: '#1A005D', lineHeight: 1 }}>
+                                    {attendedHrs.toFixed(1)}
+                                  </Typography>
+                                  <Typography sx={{ color: COLORS.textMedium, fontSize: '0.95rem' }}>
+                                    / {assignedHrs.toFixed(1)} hrs attended
+                                  </Typography>
+                                </Box>
+
+                                <Box sx={{ 
+                                  width: '100%', height: 12, borderRadius: 6, 
+                                  backgroundColor: 'rgba(67,97,238,0.1)', overflow: 'hidden', mb: 3, mt: 2
+                                }}>
+                                  <Box sx={{ 
+                                    width: `${pct}%`, height: '100%', borderRadius: 6,
+                                    background: 'linear-gradient(90deg, #4361EE, #8EC400)',
+                                    transition: 'width 0.6s ease'
+                                  }} />
+                                </Box>
+
+                                <Grid container spacing={2}>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ 
+                                      p: 2, borderRadius: '14px', textAlign: 'center',
+                                      background: 'linear-gradient(135deg, rgba(67,97,238,0.06), rgba(67,97,238,0.02))',
+                                      border: `1px solid ${COLORS.borderColor}`
+                                    }}>
+                                      <Typography sx={{ color: COLORS.primary, fontWeight: 800, fontSize: '1.5rem' }}>
+                                        {assignedHrs.toFixed(1)}
+                                      </Typography>
+                                      <Typography sx={{ color: COLORS.textMedium, fontSize: '0.75rem', fontWeight: 600 }}>
+                                        HOURS ASSIGNED
+                                      </Typography>
+                                    </Box>
+                                  </Grid>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ 
+                                      p: 2, borderRadius: '14px', textAlign: 'center',
+                                      background: 'linear-gradient(135deg, rgba(142,196,0,0.08), rgba(142,196,0,0.02))',
+                                      border: `1px solid ${COLORS.borderColor}`
+                                    }}>
+                                      <Typography sx={{ color: '#5a8000', fontWeight: 800, fontSize: '1.5rem' }}>
+                                        {pct}%
+                                      </Typography>
+                                      <Typography sx={{ color: COLORS.textMedium, fontSize: '0.75rem', fontWeight: 600 }}>
+                                        UTILIZATION
+                                      </Typography>
+                                    </Box>
+                                  </Grid>
+                                </Grid>
+
+                                <Typography sx={{ mt: 2, color: COLORS.textLight, fontSize: '0.78rem', textAlign: 'center' }}>
+                                  {pct >= 80 ? "Great follow-through on your assigned training time." 
+                                    : pct >= 50 ? "You're attending a good chunk of your assigned hours."
+                                    : "There's a gap between assigned and attended hours worth closing."}
+                                </Typography>
+                              </Box>
+                            );
+                          })()
+                        }
+                      />
+                    </Grid>
+                  </Grid>
+
+              <Dialog 
+                open={detailsModalOpen} 
+                onClose={() => setDetailsModalOpen(false)}
+                maxWidth="sm" fullWidth
+                PaperProps={{ sx: { borderRadius: '16px' } }}
+              >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#1A005D', fontWeight: 700, borderBottom: '1px solid #E2E8F0' }}>
+                  {detailsTitle}
+                  <IconButton onClick={() => setDetailsModalOpen(false)} size="small"><Close /></IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0, backgroundColor: '#F7F9FC' }}>
+                  {detailsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress sx={{ color: '#1A005D' }} /></Box>
+                  ) : detailsData.length === 0 ? (
+                    <Box sx={{ py: 6, textAlign: 'center' }}><Typography sx={{ color: '#718096' }}>No trainings found.</Typography></Box>
+                  ) : (
+                    <List sx={{ p: 2 }}>
+                      {detailsData.map((item, idx) => (
+                        <Paper key={idx} elevation={0} sx={{ mb: 1.5, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0', '&:hover': { boxShadow: '0 4px 12px rgba(67,97,238,0.08)' } }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography sx={{ fontWeight: 600, color: '#1A005D', fontSize: '0.95rem' }}>
+                              {item.training_name || `Training #${item.planing_id}`}
+                              <Typography component="span" sx={{ color: '#A0AEC0', fontSize: '0.75rem', ml: 1 }}>
+                                (Session {item.session_no})
+                              </Typography>
+                            </Typography>
+                            {getStatusChip(item)}
+                          </Box>
+                          <Typography variant="body2" sx={{ color: '#5A5A72' }}>
+                            {item.session_date ? new Date(item.session_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date TBD'}
+                            {item.from_time && ` • ${item.from_time.slice(0,5)} - ${item.to_time?.slice(0,5)}`}
+                          </Typography>
+                        </Paper>
+                      ))}
+                    </List>
+                  )}
+                </DialogContent>
+              </Dialog>
+            </Box>
+          )}
             
             
             
